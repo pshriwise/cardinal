@@ -1,0 +1,23 @@
+#! /usr/bin/env bash
+
+module purge
+module load moose-dev-gcc
+
+export CC=mpicc
+export CXX=mpicxx
+export FC=mpif90
+export F77=mpif77
+
+
+#export SAM_DIR=/home/cluster2/rhu/projects/NEAMS/SAM
+export PETSC_ARCH=arch-moose
+export PETSC_DIR=/home/cluster2/rhu/projects/NEAMS/cardinal/contrib/moose/petsc
+
+#export PETSC_DIR=/home/vcoppoleite/cardinal/contrib/moose/petsc
+
+export CARDINAL_HOME=/home/cluster2/rhu/projects/NEAMS/cardinal
+export MOOSE_DIR=/home/cluster2/rhu/projects/NEAMS/cardinal/contrib/moose
+
+#export CARDINAL_HOME=/home/vcoppoleite/cardinal
+
+export NEKRS_HOME=$CARDINAL_HOME/install
