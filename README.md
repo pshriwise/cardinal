@@ -23,6 +23,8 @@ $ git submodule update --init contrib/moose
 $ git submodule update --init --recursive contrib/openmc
 ```
 
+SAM is included in a separete directory, it should be built using moose from contrib folder
+
 The first software that must be built is the PETSc numerics library:
 
 ```
