@@ -20,6 +20,17 @@
   [../]
 []
 
+[MultiApps]
+  [./sam]
+    type = TransientMultiApp
+    app_type = SamApp
+    positions = '0 0 0'
+    input_files = ex01.i
+    library_path = /home/cluster2/rhu/projects/NEAMS/SAM/lib
+    execute_on = timestep_end
+  [../]
+[]
+
 [Outputs]
   exodus = true
 []
