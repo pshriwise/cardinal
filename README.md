@@ -1,4 +1,10 @@
-# Cardinal
+# Cardinal with SAM
+
+## Set environment in Eddy:
+
+```
+$ source .set_env_cardinal
+```
 
 ## Building
 
