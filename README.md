@@ -73,7 +73,7 @@ This will be the `install/` directory under the top-level Cardinal directory:
 $ export NEKRS_HOME=$(realpath install/)
 ```
 
-Finally, in the top-level directory, run `make`.  This will create the executable `cardinal-<mode>` in the
+Finally, in the top-level directory, run `make -j4 2>&1 | tee make.log`.  This will create the executable `cardinal-<mode>` in the
 top-level directory. `<mode>` is the optimization level used to compile MOOSE. You can control
 this mode with the `METHOD` environment variable, which by default can
 be set to any combination of `opt` (optimized mode, for production
