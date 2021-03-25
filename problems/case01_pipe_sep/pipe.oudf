@@ -1,0 +1,9 @@
+// Boundary conditions
+/* inflow 1, outflow 2, wall 3 */
+void velocityDirichletConditions(bcData *bc)
+{
+  bc->u = 1.0;
+  bc->v = 0.0;
+  bc->w = 0.0;
+}
+

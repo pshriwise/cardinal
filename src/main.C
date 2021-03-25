@@ -15,6 +15,7 @@
 #include "OpenMCApp.h"
 #include "NekApp.h"
 #include "CardinalApp.h"
+#include "SamApp.h"
 
 // Create a performance log
 PerfLog Moose::perf_log("cardinal");
@@ -38,12 +39,15 @@ main(int argc, char *argv[])
   OpenMCApp::registerApps();
   NekApp::registerApps();
   CardinalApp::registerApps();
+  SamApp::registerApps();
 
   std::string app_class_name;
   if (which_app == "openmc")
     app_class_name = "OpenMCApp";
   else if (which_app == "nek5000" or which_app == "nek")
     app_class_name = "NekApp";
+  else if (which_app == "SAM")
+    app_class_name = "SamApp";
   else
     app_class_name = "CardinalApp";
 
