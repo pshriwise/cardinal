@@ -104,7 +104,7 @@ $ mpirun -np 4 ~/repos/cardinal/cardinal-opt --app nek -i nek.i --nekrs-setup on
 ```
 
 where `--nekrs-setup` is the basename of the nekRS files for your case. The `-app` may
-be one of `nek`, `openmc`, or `cardinal` (the default). The `-app` flag basically registers
+be one of `nek`, `openmc`, `SAM` or `cardinal` (the default). The `-app` flag basically registers
 the objects in Cardinal under different MooseApps, reflecting how these objects would
 interact with each other if the OpenMC and nekRS wrappings were each ported out to individual
 apps, rather than the coupled case here for Cardinal.
