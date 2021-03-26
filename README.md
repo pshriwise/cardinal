@@ -107,4 +107,6 @@ where `--nekrs-setup` is the basename of the nekRS files for your case. The `-ap
 be one of `nek`, `openmc`, `SAM` or `cardinal` (the default). The `-app` flag basically registers
 the objects in Cardinal under different MooseApps, reflecting how these objects would
 interact with each other if the OpenMC and nekRS wrappings were each ported out to individual
-apps, rather than the coupled case here for Cardinal.
+apps, rather than the coupled case here for Cardinal. To submit jobs in the Eddy cluster use the
+PBSjob sample file in the branch and do `qsub -q eddy80core PBSjob`. Check the nodes available
+with the `nodes` command and check the job status with `qstat`.
