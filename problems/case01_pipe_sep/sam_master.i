@@ -1,20 +1,20 @@
 [GlobalParams]
     global_init_P = 1.0e5                       # Global initial fluid pressure
-    global_init_V = 0.5                         # Global initial temperature for fluid and solid
-    global_init_T = 628.15                      # Global initial fluid velocity
+    global_init_V = 1.0                         # Global initial fluid velocity
+    global_init_T = 1.0                         # Global initial temperature for fluid and solid 
     scaling_factor_var = '1 1e-3 1e-6'          # Scaling factors for fluid variables (p, v, T)
 []
 
 [EOS]
   [./eos]                                       # EOS name
-    type = PBSodiumEquationOfState              # Using the sodium equation-of-state
-  [../]
-[]
-
-[Functions]
-  [./tin_sine]                                  # Function name
-    type = ParsedFunction                       # Parsed function
-    value = 628+100*sin(pi*t)                   # Parsed function formula
+    type   = PTConstantEOS                      # Using the sodium equation-of-state
+    rho_0  = 1.0                                #Dimensionless
+    beta   = 1.0                                #Dimensionless
+    cp     = 1.0                                #Dimensionless
+    h_0    = 1.0                                #Dimensionless
+    T_0    = 1.0                                #Dimensionless
+    mu     = 5.0e-4                             #Re = 100
+    k      = 1.0                                #Dimensionless 
   [../]
 []
 
@@ -26,26 +26,26 @@
     orientation = '0 0 1'              # The orientation of the component
     heat_source = 0                    # Volumetric heat source
     f = 0.01                           # Specified friction coefficient
-    Dh = 0.02                          # Equivalent hydraulic diameter
-    length = 1                         # Length of the component
+    Dh = 0.05                          # Equivalent hydraulic diameter
+    length = 2.0                       # Length of the component
     n_elems = 100                      # Number of elements used in discretization
-    A = 3.14e-4                        # Area of the One-D fluid component
+    A = 1.96e-3                        # Area of the One-D fluid component
   [../]
 
   [./inlet]
     type = PBTDJ
     input = 'pipe1(in)'                # Name of the connected components and the end type
     eos = eos                          # The equation-of-state
-    v_bc = 0.5                         # Velocity boundary condition
-    #T_bc = 628
-    T_fn = tin_sine        # Temperature boundary condition
+    v_bc = 1.0                         # Velocity boundary condition
+    T_bc = 1.0
   [../]
 
   [./outlet]
-    type = PressureOutlet
+    type = CoupledPPSTDV
     input = 'pipe1(out) '              # Name of the connected components and the end type
     eos = eos                          # The equation-of-state
-    p_bc = '1.0e5'                     # Pressure boundary condition
+    postprocessor_pbc = p_average 
+    postprocessor_Tbc = temp_average
   [../]
 []
 
@@ -58,20 +58,19 @@
     petsc_options_iname = '-pc_type'   # PETSc option, using preconditiong
     petsc_options_value = 'lu'         # PETSc option, using ‘LU’ precondition type in Krylov solve
   [../]
-[] # End preconditioning block
-
-[Postprocessors]
-  [./Tin]
-    type = ComponentBoundaryVariableValue
-    variable = temperature
-    input = pipe1(in)
-  [../]
-  [./Tout]
-    type = ComponentBoundaryVariableValue
-    variable = temperature
-    input = pipe1(out)
-  [../]
 []
+
+#[VectorPostprocessors]
+#  [pfluid]
+#    type = LineValueSampler
+#    variable = 'pressure'
+#    start_point = '0 0 0'
+#    end_point = '2 0 0'
+#    sort_by = x
+#    num_points = 2
+#    execute_on = 'timestep_end'
+#  []
+#[]
 
 [Executioner]
   type = Transient                    # This is a transient simulation
@@ -102,13 +101,57 @@
 [Outputs]
   perf_graph = true                      # Output the performance log
   csv = true
-  [./console]
-    type = Console                       # Screen output
+  [./CSV]
+    type = CSV
+    execute_on = 'timestep_end'
+  []
+[]
+
+[MultiApps]
+  [nek]
+    type = TransientMultiApp
+    app_type = NekApp
+    input_files = 'nek.i'
+    sub_cycling = true
+    execute_on = timestep_end
+  []
+[]
+
+[Transfers]
+  [nek_pres]
+    type = MultiAppPostprocessorTransfer
+    direction = from_multiapp
+    multi_app = nek
+    reduction_type = average
+    from_postprocessor = p_average
+    to_postprocessor = p_average
   [../]
-  [./out_displaced]
-    type = Exodus                        # Output simulation data to an ExodusII file
-    use_displaced = true                 # Use displaced mesh
-    execute_on = 'initial timestep_end'  # Output data at the begining of the simulation and each time step
-    sequence = false                     # Don't save sequential file output per time step
+
+  [nek_temp]
+    type = MultiAppPostprocessorTransfer
+    direction = from_multiapp
+    multi_app = nek
+    reduction_type = average
+    from_postprocessor = temp_average
+    to_postprocessor = temp_average
+  [../]
+[]
+
+[AuxVariables]
+  [nek_temp]
+  []
+  [nek_pres]
+  []
+[]
+
+[Postprocessors]
+  [p_average]
+    type = Receiver
+    execute_on = 'TIMESTEP_END TIMESTEP_BEGIN'
+  [../]
+
+  [temp_average]
+    type = Receiver
+    execute_on = 'TIMESTEP_END TIMESTEP_BEGIN'
   [../]
 []
