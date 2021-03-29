@@ -1,4 +1,10 @@
-# Cardinal
+# Cardinal with SAM
+
+## Set environment in Eddy:
+
+```
+$ source .set_env_cardinal
+```
 
 ## Building
 
@@ -22,6 +28,8 @@ $ git submodule update --init contrib/nekRS
 $ git submodule update --init contrib/moose
 $ git submodule update --init --recursive contrib/openmc
 ```
+
+SAM is included in a separete directory, it should be built using moose from contrib folder
 
 The first software that must be built is the PETSc numerics library:
 
@@ -65,7 +73,7 @@ This will be the `install/` directory under the top-level Cardinal directory:
 $ export NEKRS_HOME=$(realpath install/)
 ```
 
-Finally, in the top-level directory, run `make`.  This will create the executable `cardinal-<mode>` in the
+Finally, in the top-level directory, run `make -j4 2>&1 | tee make.log`.  This will create the executable `cardinal-<mode>` in the
 top-level directory. `<mode>` is the optimization level used to compile MOOSE. You can control
 this mode with the `METHOD` environment variable, which by default can
 be set to any combination of `opt` (optimized mode, for production
@@ -110,7 +118,9 @@ $ mpirun -np 4 ~/repos/cardinal/cardinal-opt --app nek -i nek.i --nekrs-setup on
 ```
 
 where `--nekrs-setup` is the basename of the nekRS files for your case. The `-app` may
-be one of `nek`, `openmc`, or `cardinal` (the default). The `-app` flag basically registers
+be one of `nek`, `openmc`, `SAM` or `cardinal` (the default). The `-app` flag basically registers
 the objects in Cardinal under different MooseApps, reflecting how these objects would
 interact with each other if the OpenMC and nekRS wrappings were each ported out to individual
-apps, rather than the coupled case here for Cardinal.
+apps, rather than the coupled case here for Cardinal. To submit jobs in the Eddy cluster use the
+PBSjob sample file in the branch and do `qsub -q eddy80core PBSjob`. Check the nodes available
+with the `nodes` command and check the job status with `qstat`.

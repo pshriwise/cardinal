@@ -21,6 +21,7 @@ CONTRIB_DIR     := $(CARDINAL_DIR)/contrib
 MOOSE_SUBMODULE ?= $(CONTRIB_DIR)/moose
 NEKRS_DIR       ?= $(CONTRIB_DIR)/nekRS
 OPENMC_DIR      ?= $(CONTRIB_DIR)/openmc
+SAM_DIR         ?= $(CARDINAL_DIR)/../SAM
 PETSC_DIR       ?= $(MOOSE_SUBMODULE)/petsc
 PETSC_ARCH      ?= arch-moose
 LIBMESH_DIR     ?= $(MOOSE_SUBMODULE)/libmesh/installed/
@@ -77,6 +78,12 @@ OPENMC_INCLUDES := -I$(OPENMC_INSTALL_DIR)/include
 OPENMC_LIBDIR := $(OPENMC_INSTALL_DIR)/lib
 OPENMC_LIB := $(OPENMC_LIBDIR)/libopenmc.so
 
+#SAM_BUILDDIR := $(CARDINAL_DIR)/build/SAM
+#SAM_INSTALL_DIR := $(CONTRIB_INSTALL_DIR)
+#SAM_INCLUDES := -I$(SAM_INSTALL_DIR)/include
+#SAM_LIBDIR := $(SAM_INSTALL_DIR)/lib
+#SAM_LIB := $(SAM_LIBDIR)/libsam-opt.so
+
 # This is used in $(FRAMEWORK_DIR)/build.mk
 ADDITIONAL_CPPFLAGS := $(HDF5_INCLUDES) $(OPENMC_INCLUDES) $(NEKRS_INCLUDES)
 
@@ -111,7 +118,7 @@ ALL_MODULES         := no
 
 CHEMICAL_REACTIONS  := no
 CONTACT             := no
-FLUID_PROPERTIES    := no
+FLUID_PROPERTIES    := yes
 HEAT_CONDUCTION     := yes
 MISC                := no
 NAVIER_STOKES       := no
@@ -120,15 +127,23 @@ RDG                 := no
 RICHARDS            := no
 SOLID_MECHANICS     := no
 STOCHASTIC_TOOLS    := no
-TENSOR_MECHANICS    := no
+TENSOR_MECHANICS    := yes
 XFEM                := no
 POROUS_FLOW         := no
+ADDITIONAL_CPPFLAGS += -DTHERMOMECHANICS_ENABLED
 
 include $(MOOSE_DIR)/modules/modules.mk
 
 # ======================================================================================
 # External apps
 # ======================================================================================
+
+APPLICATION_DIR     := $(SAM_DIR)
+#APPLICATION_NAME    := sam
+BUILD_EXEC          := no
+ADDITIONAL_INCLUDES := -I$(SAM_DIR)/include/base
+ADDITIONAL_LIBS := $(SAM_DIR)/lib/libsam-$(METHOD).la -lflapack -lfblas
+include            $(FRAMEWORK_DIR)/app.mk
 
 # libmesh_CXX, etc, were defined in build.mk
 export CXX := $(libmesh_CXX)
@@ -146,6 +161,7 @@ export CARDINAL_DIR
 APPLICATION_DIR    := $(CARDINAL_DIR)
 APPLICATION_NAME   := cardinal
 BUILD_EXEC         := yes
+DEP_APPS           := $(shell $(FRAMEWORK_DIR)/scripts/find_dep_apps.py $(APPLICATION_NAME))
 GEN_REVISION       := no
 
 include            $(CARDINAL_DIR)/config/nekrs.mk

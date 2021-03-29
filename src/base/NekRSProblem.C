@@ -6,8 +6,10 @@
 
 #include "nekrs.hpp"
 #include "nekInterface/nekInterfaceAdapter.hpp"
+#include "SamApp.h"
 
 registerMooseObject("NekApp", NekRSProblem);
+registerMooseObject("SamApp", NekRSProblem);
 
 bool NekRSProblem::_first = true;
 
