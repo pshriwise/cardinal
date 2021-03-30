@@ -3,23 +3,15 @@ backend = CUDA
 deviceNumber = LOCAL-RANK
 
 [GENERAL]
-#polynomialOrder = 8
-#startFrom = r.fld+time=0
-#stopAt = endTime
-#endTime = 500
-#dt = 1e-04
-#timeStepper = tombo2
-
 polynomialOrder = 4
-#startFrom = onepebble2.run03
 numSteps = 10000
-dt = 4e-03
+dt = 2e-03
 writeInterval = 100
 extrapolation = OIFS
 targetCFL = 2.0
 
 #writeControl = runTime
-writeInterval = 1
+writeInterval = 0.2
 
 [PROBLEMTYPE]
 equation = incompNS

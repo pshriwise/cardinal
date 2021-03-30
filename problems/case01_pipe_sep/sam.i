@@ -1,5 +1,5 @@
 [GlobalParams]
-    global_init_P = 1.0e5                       # Global initial fluid pressure
+    global_init_P = 0.0                         # Global initial fluid pressure
     global_init_V = 1.0                         # Global initial fluid velocity
     global_init_T = 1.0                         # Global initial temperature for fluid and solid 
     scaling_factor_var = '1 1 1'          # Scaling factors for fluid variables (p, v, T)
@@ -23,7 +23,7 @@
     type = PBOneDFluidComponent
     eos = eos                          # The equation-of-state name
     position = '0 0 0'                 # The origin position of this component
-    orientation = '1 0 0'              # The orientation of the component
+    orientation = '0 0 1'              # The orientation of the component
     heat_source = 0                    # Volumetric heat source
     f = 0.64                           # Specified friction coefficient
     Dh = 0.05                          # Equivalent hydraulic diameter
@@ -41,11 +41,10 @@
   [../]
 
   [./outlet]
-    type = CoupledPPSTDV
+    type = PressureOutlet
     input = 'pipe1(out) '              # Name of the connected components and the end type
     eos = eos                          # The equation-of-state
-    postprocessor_pbc = p_average 
-    postprocessor_Tbc = temp_average
+    p_bc = '0.0'                     # Pressure boundary condition
   [../]
 []
 
@@ -59,18 +58,6 @@
     petsc_options_value = 'lu'         # PETSc option, using ‘LU’ precondition type in Krylov solve
   [../]
 []
-
-#[VectorPostprocessors]
-#  [pfluid]
-#    type = LineValueSampler
-#    variable = 'pressure'
-#    start_point = '0 0 0'
-#    end_point = '2 0 0'
-#    sort_by = x
-#    num_points = 2
-#    execute_on = 'timestep_end'
-#  []
-#[]
 
 [Executioner]
   type = Transient                    # This is a transient simulation
@@ -98,53 +85,7 @@
   [../]
 [] # close Executioner section
 
-[MultiApps]
-  [nek]
-    type = TransientMultiApp
-    app_type = NekApp
-    input_files = 'nek.i'
-    sub_cycling = true
-    execute_on = timestep_end
-  []
-[]
-
-[Transfers]
-  [nek_pres]
-    type = MultiAppPostprocessorTransfer
-    direction = from_multiapp
-    multi_app = nek
-    reduction_type = average
-    from_postprocessor = p_average
-    to_postprocessor = p_average
-  [../]
-
-  [nek_temp]
-    type = MultiAppPostprocessorTransfer
-    direction = from_multiapp
-    multi_app = nek
-    reduction_type = average
-    from_postprocessor = temp_average
-    to_postprocessor = temp_average
-  [../]
-[]
-
-[AuxVariables]
-  [nek_temp]
-  []
-  [nek_pres]
-  []
-[]
-
 [Postprocessors]
-  [p_average]
-    type = Receiver
-    execute_on = 'TIMESTEP_END TIMESTEP_BEGIN'
-  [../]
-  [temp_average]
-    type = Receiver
-    execute_on = 'TIMESTEP_END TIMESTEP_BEGIN'
-  [../]
-
   [./Pin]
     type = ComponentBoundaryVariableValue
     variable = pressure

@@ -16,19 +16,26 @@
 []
 
 [Outputs]
-  exodus = true
+  [out]
+    type = CSV
+    hide = 'flux_integral'
+    execute_on = 'final'
+  []
 []
 
 [Postprocessors]
   [p_average]
-    type = NekSideIntegral
+    type = NekSideAverage
     field = pressure
     boundary = '1'
   []
 
   [temp_average]
-    type = NekSideIntegral
+    type = NekSideAverage
     field = temperature
     boundary = '1'
+  []
+  [flux_integral]
+    type = Receiver
   []
 []
