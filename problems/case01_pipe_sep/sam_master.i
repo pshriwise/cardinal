@@ -109,6 +109,14 @@
 []
 
 [Transfers]
+  [vel_to_nek]
+    type = MultiAppPostprocessorTransfer
+    direction = to_multiapp
+    multi_app = nek
+    from_postprocessor = vel_interface
+    to_postprocessor = vel_interface
+  []
+
   [nek_pres]
     type = MultiAppPostprocessorTransfer
     direction = from_multiapp
@@ -136,6 +144,11 @@
 []
 
 [Postprocessors]
+  [vel_interface]
+    type = ComponentBoundaryVariableValue
+    variable = velocity
+    input = pipe1(out)
+  [../]
   [p_average]
     type = Receiver
     execute_on = 'TIMESTEP_END TIMESTEP_BEGIN'

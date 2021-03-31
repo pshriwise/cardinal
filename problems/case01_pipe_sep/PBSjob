@@ -1,6 +1,6 @@
 #!/bin/bash
 #PBS -k o
-#PBS -l nodes=1:ppn=80,walltime=01:00:00
+#PBS -l nodes=1:ppn=40,walltime=01:00:00
 #PBS -M vcoppoleite@anl.gov
 #PBS -m abe
 #PBS -N pipe
@@ -25,4 +25,5 @@ export CARDINAL_HOME=/home/cluster2/rhu/projects/NEAMS/cardinal
 
 export NEKRS_HOME=$CARDINAL_HOME/install
 
-mpirun -np 80 ../../cardinal-opt --app SAM -i sam_master.i --nekrs-setup pipe  > logfile
+mpirun -np 40 ../../cardinal-opt --app SAM -i sam_master.i --nekrs-setup pipe  > logfile
+#mpirun -np 40 ../../cardinal-opt --app SAM -i sam.i  > logfile

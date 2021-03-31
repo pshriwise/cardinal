@@ -38,4 +38,7 @@
   [flux_integral]
     type = Receiver
   []
+  [vel_interface]
+    type = Receiver
+  []
 []
