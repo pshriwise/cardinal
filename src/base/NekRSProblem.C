@@ -6,10 +6,8 @@
 
 #include "nekrs.hpp"
 #include "nekInterface/nekInterfaceAdapter.hpp"
-#include "SamApp.h"
 
 registerMooseObject("NekApp", NekRSProblem);
-registerMooseObject("SamApp", NekRSProblem);
 
 bool NekRSProblem::_first = true;
 
@@ -33,6 +31,8 @@ validParams<NekRSProblem>()
   params.addRangeCheckedParam<Real>("L_ref", 1.0, "L_ref > 0.0", "Reference length scale value for non-dimensional solution");
   params.addRangeCheckedParam<Real>("rho_0", 1.0, "rho_0 > 0.0", "Density parameter value for non-dimensional solution");
   params.addRangeCheckedParam<Real>("Cp_0", 1.0, "Cp_0 > 0.0", "Heat capacity parameter value for non-dimensional solution");
+
+  params.addParam<bool>("parabolic", false, "Will input the nekRS inlet as a parabolic profile");
   return params;
 }
 
@@ -47,6 +47,7 @@ NekRSProblem::NekRSProblem(const InputParameters &params) : ExternalProblem(para
     _L_ref(getParam<Real>("L_ref")),
     _rho_0(getParam<Real>("rho_0")),
     _Cp_0(getParam<Real>("Cp_0")),
+    _parabolic(getParam<bool>("parabolic")),
     _start_time(nekrs::startTime())
 {
   if (_minimize_transfers_in && !isParamValid("transfer_in"))
@@ -118,6 +119,7 @@ NekRSProblem::NekRSProblem(const InputParameters &params) : ExternalProblem(para
     _outgoing = "boundary temperature";
     _n_points = _n_surface_elems * _n_vertices_per_surface;
     _flux_face = (double *) calloc(_n_vertices_per_surface, sizeof(double));
+    _vel_face = (double *) calloc(_n_vertices_per_surface, sizeof(double));
   }
   else if (_volume && !_boundary) // only volume coupling
   {
@@ -159,6 +161,7 @@ NekRSProblem::~NekRSProblem()
 
   if (_T) free(_T);
   if (_flux_face) free(_flux_face);
+  if (_vel_face) free(_vel_face);
   if (_source_elem) free(_source_elem);
   if (_flux_elem) free(_flux_elem);
 }
@@ -209,7 +212,11 @@ NekRSProblem::initialSetup()
   _timestepper->dimensionalizeDT();
 
   if (_boundary)
+  {
     _flux_integral = &getPostprocessorValueByName("flux_integral");
+    _console << "Mitocondria ";
+    _vel_interface = &getPostprocessorValueByName("vel_interface");
+  }
   if (_volume)
     _source_integral = &getPostprocessorValueByName("source_integral");
 
@@ -447,6 +454,62 @@ NekRSProblem::sendBoundaryHeatFluxToNek()
 }
 
 void
+NekRSProblem::sendBoundaryVelocityToNek()
+{
+  _console << "Sending velocity to nekRS boundary << Moose::stringify(pipe1(out)) << ... ";
+
+  auto & solution = _aux->solution();
+  auto sys_number = _aux->number();
+
+  if (_first)
+  {
+    _serialized_solution->init(_aux->sys().n_dofs(), false, SERIAL);
+    _first = false;
+  }
+
+  solution.localize(*_serialized_solution);
+
+  auto & mesh = _nek_mesh->getMesh();
+
+  const double u_sam = *_vel_interface;
+
+  // For the case of a boundary-only coupling, we could just loop over the elements on
+  // the boundary of interest and write (carefully) into the volume nrs-usrwrk array. Now,
+  // our flux variable is defined over the entire volume (maybe the MOOSE transfer only sent
+  // meaningful values to the coupling boundaries), so we need to do a volume interpolation
+  // of the flux into nrs->usrwrk, rather than a face interpolation. This could definitely be
+  // optimized in the future to truly only just write the boundary values into the nekRS
+  // scratch space rather than the volume values, but it looks right now that our biggest
+  // expense occurs in the MOOSE transfer system, not these transfers internally to nekRS.
+
+  for (unsigned int e = 0; e < _n_surface_elems; e++)
+  {
+    auto elem_ptr = mesh.elem_ptr(e);
+
+    for (unsigned int n = 0; n < _n_vertices_per_surface; n++)
+    {
+      auto node_ptr = elem_ptr->node_ptr(n);
+
+      // For each face, get the flux at the libMesh nodes. This will be passed into
+      // nekRS, which will interpolate onto its GLL points. Because we are looping over
+      // nodes from libMesh, we need to get the GLL index known by nekRS and use it to
+      // determine the offset in the nekRS arrays.
+      int node_index = _nek_mesh->boundaryNodeIndex(n);
+      auto node_offset = e * _n_vertices_per_surface + node_index;
+      auto dof_idx = node_ptr->dof_number(sys_number, _vel_var, 0);
+      _vel_face[node_index] = (*_serialized_solution)(dof_idx) / nekrs::solution::referenceVel();
+    }
+
+    // Now that we have the flux at the nodes of the NekRSMesh, we can interpolate them
+    // onto the nekRS GLL points
+    nekrs::u_inlet(e, _nek_mesh->order(), _vel_face, u_sam);
+  }
+
+  _console << "done" << std::endl;
+
+}
+
+void
 NekRSProblem::sendVolumeHeatSourceToNek()
 {
   _console << "Sending heat source to nekRS volume... " << std::endl;
@@ -601,6 +664,7 @@ void NekRSProblem::syncSolutions(ExternalProblem::Direction direction)
 
       if (_boundary)
         sendBoundaryHeatFluxToNek();
+        sendBoundaryVelocityToNek();
 
       if (_volume)
         sendVolumeHeatSourceToNek();
@@ -699,6 +763,9 @@ NekRSProblem::addExternalVariables()
     // sending app (such as BISON) into 'avg_flux'.
     addAuxVariable("MooseVariable", "avg_flux", var_params);
     _avg_flux_var = _aux->getFieldVariable<Real>(0, "avg_flux").number();
+
+    addAuxVariable("MooseVariable", "vel_var", var_params);
+    _vel_var = _aux->getFieldVariable<Real>(0, "vel_var").number();
   }
 
   if (_volume)

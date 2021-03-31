@@ -130,6 +130,14 @@ void volumeTemperature(const int order, const bool needs_interpolation, double* 
  */
  void flux(const int elem_id, const int order, double * flux_face);
 
+ /**
+  * Interpolate the MOOSE flux onto the nekRS mesh
+  * @param[in] elem_id global element ID
+  * @param[in] order enumeration of the surface mesh order (0 = first, 1 = second, etc.)
+  * @param[in] flux_face flux at the libMesh nodes
+  */
+  void u_inlet(const int elem_id, const int order, double * vel_face, const double u_sam);
+
 /**
  * Interpolate a volume-based MOOSE flux into the nekRS mesh
  * @param[in] elem_id global element ID
@@ -560,6 +568,12 @@ void dimensionalize(const field::NekFieldEnum & field, double & value);
  * @return reference heat flux scale
  */
 double referenceFlux();
+
+/**
+ * Get the reference heat flux scale, \f$\rho C_pU\Delta T\f$
+ * @return reference heat flux scale
+ */
+double referenceVel();
 
 /**
  * Get the reference heat source scale, \f$\rho C_pU\Delta T/L\f$
