@@ -90,15 +90,14 @@ def report_pebble_cell_level(geom: openmc.Geometry, pebble_cells):
         for cell in cells.values():
             # if one of the cells on this level
             # is a pebble cell, set the level and break
-            if 'cell_pebble_' in cell.name:
-            #if cell in peb_cells:
+            if cell in peb_cells:
                 level = curr_lvl
                 break
 
             if isinstance(cell.fill, openmc.Universe):
                 univ_stack.append((curr_lvl + 1, cell.fill))
             elif isinstance(cell.fill, openmc.Lattice):
-                unique_univs = np.unique(np.asarray(cell.fill.universes).flatten())
+                unique_univs = set(np.asarray(cell.fill.universes).flatten())
                 univ_stack += [(curr_lvl + 1, u) for u in unique_univs]
 
     if level is not None:
@@ -107,8 +106,8 @@ def report_pebble_cell_level(geom: openmc.Geometry, pebble_cells):
               "for a cell tally in Cardinal's OpenMCProblem)".format(level))
         print("{}{}{}".format(bcolors.OKGREEN, msg, bcolors.ENDC))
     else:
-        raise RuntimeError("Cell key '{}' was not"
-                           "found in the geometry.".format(cell_name_key))
+        raise RuntimeError("Pebble cells were not"
+                           "found in the geometry.")
 
 
 # -------------- Materials Parameters --------
@@ -152,13 +151,13 @@ ap = ArgumentParser(description=program_description,
                     epilog=program_epilog)
 
 ap.add_argument('-e', dest='extra_flibe_layer', type=float,
-                default=0.00001, help='Reflector thickness')
+                default=0.00001, help='Flibe layer thickness')
 ap.add_argument('-v', dest='verbose', action='store_true',
                 default=False, help='Enable verbose output')
 ap.add_argument('-r', dest='random_trisos', action='store_true',
                 default=False, help='Enable random TRISO distribution')
 ap.add_argument('-b', dest='bc', type=str,
-                default='reflective', help='Reactor external B.C.')
+                default='reflective', help='Reactor top/bottom B.C.')
 ap.add_argument('-p', dest='particles', type=int,
                 default=1000, help='Particles per batch')
 ap.add_argument('-i', dest='inactive', type=int,
@@ -171,8 +170,10 @@ ap.add_argument('-l', dest='pshape', type=int,
 ap.add_argument('-t', dest='tshape', type=int,
                 nargs=3, default=(20, 20, 20),
                 help='TRISO lattice shape')
-ap.add_argument('-f', dest='reflector_thickness', type=float,
-                default=0.0, help='Include surrounding reflector')
+ap.add_argument('-f', dest='radial_reflector_thickness', type=float,
+                default=0.0, help='Include surrounding reflector on outer periphery')
+ap.add_argument('-g', dest='axial_reflector_thickness', type=float,
+                default=0.0, help='Include surrounding reflector on top/bottom of the bed')
 args = ap.parse_args()
 
 # warn user about pebble center expetation
@@ -222,11 +223,11 @@ vessel_height = vessel_z_max - vessel_z_min
 # Add outer reflector of thickness 40 cm, UCBTH-14-002. We assume that there is then also a reflector
 # of the same thickness on the top and bottom (an arbitrary selection). This reflector surrounds the pebble bed
 # around its outer radius as well as forms the center reflector column.
-reflector_thickness = args.reflector_thickness
-reflector_z_min = vessel_z_min - reflector_thickness
-reflector_z_max = vessel_z_max + reflector_thickness
-reflector_outer_radius = vessel_outer_radius + reflector_thickness
-reflector_is_present = reflector_thickness > 0.0
+reflector_z_min = vessel_z_min - args.axial_reflector_thickness
+reflector_z_max = vessel_z_max + args.axial_reflector_thickness
+reflector_outer_radius = vessel_outer_radius + args.radial_reflector_thickness
+radial_reflector_is_present = args.radial_reflector_thickness > 0.0
+axial_reflector_is_present = args.axial_reflector_thickness > 0.0
 
 
 # -------------- Printing Parameters ---------
@@ -248,8 +249,9 @@ if verbose:
     print("Vessel radius inner          [cm] = {}".format(vessel_inner_radius))
     print("Vessel z1_vessel (min z)     [cm] = {}".format(vessel_z_min))
     print("Vessel height_vessel         [cm] = {}".format(vessel_z_max - vessel_z_min))
-    print("Reflector present            [--] = {}".format(reflector_is_present))
-    if reflector_is_present:
+    print("Radial reflector present     [--] = {}".format(radial_reflector_is_present))
+    print("Axial reflector present      [--] = {}".format(axial_reflector_is_present))
+    if radial_reflector_is_present or axial_reflector_is_present:
         print("Reflector radius outer       [cm] = {}".format(reflector_outer_radius))
         print("Reflector height             [cm] = {}".format(reflector_z_max - reflector_z_min))
 
@@ -415,48 +417,89 @@ if not l_triso:
 # Fil central pebble cell with the TRISO lattice
 c_pebble_central.fill = l_triso
 
-pebble_cells = [c_pebble_inner,
-                c_pebble_central,
-                c_pebble_outer,
-                c_pebble_flibe]
-u_pebble = openmc.Universe(cells=pebble_cells)
+pebble_univ_cells = [c_pebble_inner,
+                     c_pebble_central,
+                     c_pebble_outer,
+                     c_pebble_flibe]
+u_pebble = openmc.Universe(cells=pebble_univ_cells)
 
 # figure out the reactor boundary conditions
-reflector_bc = args.bc
-if reflector_is_present:
-    vessel_bc = 'transmission'
+reactor_axial_bc = args.bc
+
+if radial_reflector_is_present:
+    vessel_radial_bc = 'transmission'
 else:
-    vessel_bc = args.bc
+    vessel_radial_bc = 'vacuum'
+
+if axial_reflector_is_present:
+    vessel_axial_bc = 'transmission'
+else:
+    vessel_axial_bc = reactor_axial_bc
 
 # Reactor cells
 vessel_outer = openmc.ZCylinder(x0=vessel_x,
                                 y0=vessel_y,
                                 r=vessel_outer_radius,
-                                boundary_type=vessel_bc)
-
-if reflector_is_present:
-    vessel_inner = openmc.ZCylinder(x0=vessel_x,
-                                    y0=vessel_y,
-                                    r=vessel_inner_radius,
-                                    boundary_type=vessel_bc)
+                                boundary_type=vessel_radial_bc)
 
 vessel_bottom = openmc.ZPlane(z0=vessel_z_min,
-                              boundary_type=vessel_bc)
+                              boundary_type=vessel_axial_bc)
 vessel_top = openmc.ZPlane(z0=vessel_z_max,
-                           boundary_type=vessel_bc)
+                           boundary_type=vessel_axial_bc)
 vessel_region = -vessel_outer & +vessel_bottom & -vessel_top
 vessel_cell = openmc.Cell(name='Pebble Vessel', region=vessel_region)
 
 reflector_cells = []
-if reflector_is_present:
+
+# only a radial reflector
+if radial_reflector_is_present and (not axial_reflector_is_present):
+    vessel_inner = openmc.ZCylinder(x0=vessel_x,
+                                    y0=vessel_y,
+                                    r=vessel_inner_radius,
+                                    boundary_type='transmission')
+
+    vessel_cell.region = vessel_cell.region & +vessel_inner
+
+    axial_plane = +vessel_bottom & -vessel_top
+
+    # Reflector cell - for the axial BCs, this takes the same as the vessel axial BCs
+    reflector_outer = openmc.ZCylinder(x0=vessel_x, y0=vessel_y, r=reflector_outer_radius, boundary_type='vacuum')
+    outer_reflector_region = -reflector_outer & axial_plane & +vessel_outer
+    inner_reflector_region = -vessel_inner & axial_plane
+    outer_reflector_cell = openmc.Cell(name='Outer Reflector', region=outer_reflector_region, fill=m_reflector)
+    inner_reflector_cell = openmc.Cell(name='Inner Reflector', region=inner_reflector_region, fill=m_reflector)
+    reflector_cells = [outer_reflector_cell, inner_reflector_cell]
+
+# only an axial reflector
+if (not radial_reflector_is_present) and axial_reflector_is_present:
+
+    reflector_bottom = openmc.ZPlane(z0=reflector_z_min, boundary_type=reactor_axial_bc)
+    reflector_top = openmc.ZPlane(z0=reflector_z_max, boundary_type=reactor_axial_bc)
+    top_reflector_region = +vessel_top & -reflector_top & -vessel_outer
+    bottom_reflector_region = -vessel_bottom & +reflector_bottom & -vessel_outer
+    top_reflector_cell = openmc.Cell(name='Top Reflector', region=top_reflector_region, fill=m_reflector)
+    bottom_reflector_cell = openmc.Cell(name='Bottom Reflector', region=bottom_reflector_region, fill=m_reflector)
+    reflector_cells = [top_reflector_cell, bottom_reflector_cell]
+
+if radial_reflector_is_present and axial_reflector_is_present:
+    vessel_inner = openmc.ZCylinder(x0=vessel_x,
+                                    y0=vessel_y,
+                                    r=vessel_inner_radius,
+                                    boundary_type=vessel_radial_bc) # transmission
+
     vessel_cell.region = vessel_cell.region & +vessel_inner
 
     # Reflector cell
-    reflector_outer = openmc.ZCylinder(x0=vessel_x, y0=vessel_y, r=reflector_outer_radius, boundary_type=reflector_bc)
-    reflector_bottom = openmc.ZPlane(z0=reflector_z_min, boundary_type=reflector_bc)
-    reflector_top = openmc.ZPlane(z0=reflector_z_max, boundary_type=reflector_bc)
-    outer_reflector_region = -reflector_outer & +vessel_bottom & -vessel_top & +vessel_inner
-    inner_reflector_region = -vessel_inner & +vessel_bottom & -vessel_top
+    reflector_outer = openmc.ZCylinder(x0=vessel_x, y0=vessel_y, r=reflector_outer_radius, boundary_type='vacuum')
+    reflector_bottom = openmc.ZPlane(z0=reflector_z_min, boundary_type=reactor_axial_bc)
+    reflector_top = openmc.ZPlane(z0=reflector_z_max, boundary_type=reactor_axial_bc)
+
+    axial_plane = +vessel_bottom & -vessel_top
+
+    # the outer reflector has an axial height from vessel_bottom to vessel_top, and the axial reflector
+    # covers the remaining space
+    outer_reflector_region = -reflector_outer & axial_plane & +vessel_inner
+    inner_reflector_region = -vessel_inner & axial_plane
     top_reflector_region = +vessel_top & -reflector_top & -reflector_outer
     bottom_reflector_region = -vessel_bottom & +reflector_bottom & -reflector_outer
     outer_reflector_cell = openmc.Cell(name='Outer Reflector', region=outer_reflector_region, fill=m_reflector)
@@ -465,14 +508,24 @@ if reflector_is_present:
     bottom_reflector_cell = openmc.Cell(name='Bottom Reflector', region=bottom_reflector_region, fill=m_reflector)
     reflector_cells = [outer_reflector_cell, inner_reflector_cell, top_reflector_cell, bottom_reflector_cell]
 
+# create an additional universe-cell layer for the pebbles
+pebble_univs = []
+pebble_cells = []
+for center in pebble_centers:
+    s = openmc.Sphere(r=radius_pebble_outer)
+    c = openmc.Cell(region=-s, fill=u_pebble)
+    u = openmc.Universe(cells=[c])
+    pebble_cells.append(c)
+    pebble_univs.append(u)
+
 # Creating TRISOs for the pebbles to pack them into a lattice for efficiency
-cell_name = ['cell_pebble_' + str(i) for i in range(len(pebble_centers))]
 pebble_trisos = []
-for center, name in zip(pebble_centers, cell_name):
+for pebble_num, (center, pebble_univ) in enumerate(zip(pebble_centers, pebble_univs)):
+    cell_name = 'cell_pebble_{}'.format(pebble_num)
     triso = openmc.model.TRISO(radius_pebble_outer,
-                               u_pebble,
+                               pebble_univ,
                                center)
-    triso.name = name
+    triso.name = cell_name
     pebble_trisos.append(triso)
 
 # Place pebbles into a lattice
@@ -494,7 +547,7 @@ geom_cells = [vessel_cell] + reflector_cells
 geom = openmc.Geometry(geom_cells)
 
 # assumes the pebble cells are all at the same level of the geometry
-report_pebble_cell_level(geom, pebble_trisos)
+report_pebble_cell_level(geom, pebble_cells)
 
 if verbose:
     print("Cell of the vessel:")
@@ -535,7 +588,7 @@ m_colors = {m_fuel: 'brown',
             m_graphite_outer: 'Navy',
             m_flibe: 'yellow'}
 
-if reflector_is_present:
+if radial_reflector_is_present or axial_reflector_is_present:
     m_colors[m_reflector] = 'green'
 
 plot1          = openmc.Plot()
