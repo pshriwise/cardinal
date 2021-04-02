@@ -131,12 +131,12 @@ void volumeTemperature(const int order, const bool needs_interpolation, double* 
  void flux(const int elem_id, const int order, double * flux_face);
 
  /**
-  * Interpolate the MOOSE flux onto the nekRS mesh
+  * Pass the interface velocity from SAM onto the interface boundary of the nekRS mesh
   * @param[in] elem_id global element ID
   * @param[in] order enumeration of the surface mesh order (0 = first, 1 = second, etc.)
-  * @param[in] flux_face flux at the libMesh nodes
+  * @param[in] interface velocity from SAM
   */
-  void u_inlet(const int elem_id, const int order, double * vel_face, const double u_sam);
+  void u_inlet(const int elem_id, const int order, const double u_sam);
 
 /**
  * Interpolate a volume-based MOOSE flux into the nekRS mesh

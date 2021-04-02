@@ -264,7 +264,7 @@ protected:
   double * _flux_face = nullptr;
 
   /// MOOSE velocity interpolated onto the (boundary) data transfer mesh
-  double * _vel_face = nullptr;
+//  double * _vel_face = nullptr;
 
   /// MOOSE flux interpolated onto the (volume) data transfer mesh
   double * _flux_elem = nullptr;
@@ -282,7 +282,7 @@ protected:
   unsigned int _heat_source_var;
 
   /// velocity transfer variable read from by nekRS
-  unsigned int _vel_var;
+//  unsigned int _vel_var;
 
   /// Descriptive string for data transfer going in to nekRS
   std::string _incoming;

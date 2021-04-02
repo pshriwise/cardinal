@@ -444,7 +444,7 @@ void flux(const int elem_id, const int order, double * flux_face)
   }
 }
 
-void u_inlet(const int elem_id, const int order, double * vel_face, const double u_sam)
+void u_inlet(const int elem_id, const int order, const double u_sam)
 {
   nrs_t * nrs = (nrs_t *) nrsPtr();
   mesh_t * mesh = nrs->cds->mesh;
