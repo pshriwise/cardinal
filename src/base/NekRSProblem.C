@@ -215,7 +215,6 @@ NekRSProblem::initialSetup()
   {
 //    _flux_integral = &getPostprocessorValueByName("flux_integral");
     _vel_interface = &getPostprocessorValueByName("vel_interface");
-    _console << "Mitocondria ";
   }
   if (_volume)
     _source_integral = &getPostprocessorValueByName("source_integral");
@@ -456,7 +455,7 @@ NekRSProblem::sendBoundaryHeatFluxToNek()
 void
 NekRSProblem::sendBoundaryVelocityToNek()
 {
-  _console << "Sending velocity to nekRS boundary ... ";
+  _console << "Sending velocity to nekRS from boundary " << Moose::stringify(*_boundary) << "... ";
 
   auto & solution = _aux->solution();
   auto sys_number = _aux->number();
@@ -475,12 +474,6 @@ NekRSProblem::sendBoundaryVelocityToNek()
 
   for (unsigned int e = 0; e < _n_surface_elems; e++)
   {
-    auto elem_ptr = mesh.elem_ptr(e);
-
-    for (unsigned int n = 0; n < _n_vertices_per_surface; n++)
-    {
-      auto node_ptr = elem_ptr->node_ptr(n);
-    }
 
   // 
   // The interface velocity comming from SAM, i.e. u_sam, is passed to nekRS onto all GLL

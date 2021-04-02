@@ -1,6 +1,6 @@
 [Mesh]
   type = NekRSMesh
-  boundary = '1'
+  boundary = '1 2'
 []
 
 [Problem]
@@ -18,25 +18,27 @@
 [Outputs]
   [out]
     type = CSV
-    hide = 'flux_integral'
     execute_on = 'final'
   []
 []
 
 [Postprocessors]
-  [p_average]
+  [p_interface]
     type = NekSideAverage
     field = pressure
     boundary = '1'
   []
 
-  [temp_average]
+  [p_out]
+    type = NekSideAverage
+    field = pressure
+    boundary = '2'
+  []
+
+  [temp_interface]
     type = NekSideAverage
     field = temperature
     boundary = '1'
-  []
-  [flux_integral]
-    type = Receiver
   []
   [vel_interface]
     type = Receiver

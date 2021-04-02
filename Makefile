@@ -32,6 +32,8 @@ HDF5_INCLUDE_DIR ?= $(HDF5_ROOT)/include
 HDF5_LIBDIR ?= $(HDF5_ROOT)/lib
 HDF5_INCLUDES := -I$(HDF5_INCLUDE_DIR) -I$(HDF5_ROOT)/include
 
+SAM_CONTENT     := $(shell ls $(SAM_DIR) 2> /dev/null)
+
 # BUILD_TYPE will be passed to CMake via CMAKE_BUILD_TYPE
 ifeq ($(METHOD),dbg)
 	BUILD_TYPE := Debug
@@ -77,12 +79,6 @@ OPENMC_INSTALL_DIR := $(CONTRIB_INSTALL_DIR)
 OPENMC_INCLUDES := -I$(OPENMC_INSTALL_DIR)/include
 OPENMC_LIBDIR := $(OPENMC_INSTALL_DIR)/lib
 OPENMC_LIB := $(OPENMC_LIBDIR)/libopenmc.so
-
-#SAM_BUILDDIR := $(CARDINAL_DIR)/build/SAM
-#SAM_INSTALL_DIR := $(CONTRIB_INSTALL_DIR)
-#SAM_INCLUDES := -I$(SAM_INSTALL_DIR)/include
-#SAM_LIBDIR := $(SAM_INSTALL_DIR)/lib
-#SAM_LIB := $(SAM_LIBDIR)/libsam-opt.so
 
 # This is used in $(FRAMEWORK_DIR)/build.mk
 ADDITIONAL_CPPFLAGS := $(HDF5_INCLUDES) $(OPENMC_INCLUDES) $(NEKRS_INCLUDES)
@@ -138,12 +134,25 @@ include $(MOOSE_DIR)/modules/modules.mk
 # External apps
 # ======================================================================================
 
-APPLICATION_DIR     := $(SAM_DIR)
+#APPLICATION_DIR     := $(SAM_DIR)
 #APPLICATION_NAME    := sam
-BUILD_EXEC          := no
-ADDITIONAL_INCLUDES := -I$(SAM_DIR)/include/base
-ADDITIONAL_LIBS := $(SAM_DIR)/lib/libsam-$(METHOD).la -lflapack -lfblas
-include            $(FRAMEWORK_DIR)/app.mk
+#BUILD_EXEC          := no
+#ADDITIONAL_INCLUDES := -I$(SAM_DIR)/include/base
+#ADDITIONAL_LIBS := $(SAM_DIR)/lib/libsam-$(METHOD).la -lflapack -lfblas
+#GEN_REVISION       := no
+#include            $(FRAMEWORK_DIR)/app.mk
+
+# SAM submodule
+ifneq ($(SAM_CONTENT),)
+  libmesh_CXXFLAGS    += -DENABLE_SAM_COUPLING
+  APPLICATION_DIR     := $(SAM_DIR)
+  APPLICATION_NAME    := sam
+  TENSOR_MECHANICS    := yes
+  FLUID_PROPERTIES    := yes
+  HEAT_CONDUCTION     := yes
+  ADDITIONAL_CPPFLAGS += -DTHERMOMECHANICS_ENABLED
+  include             $(FRAMEWORK_DIR)/app.mk
+endif
 
 # libmesh_CXX, etc, were defined in build.mk
 export CXX := $(libmesh_CXX)
