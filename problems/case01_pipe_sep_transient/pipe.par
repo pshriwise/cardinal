@@ -1,0 +1,40 @@
+[OCCA]
+backend = CUDA
+deviceNumber = LOCAL-RANK
+
+[GENERAL]
+polynomialOrder = 4
+numSteps = 10
+dt = 2e-03
+writeInterval = 10
+extrapolation = OIFS
+targetCFL = 2.0
+
+[PROBLEMTYPE]
+equation = incompNS
+stressFormulation = true # required for variable viscosity
+
+[PRESSURE]
+residualTol = 1e-04
+
+[VELOCITY]
+boundaryTypeMap = v, O, W 
+residualTol = 1e-06
+density = 1.0
+viscosity = 5.0e-4
+
+[TEMPERATURE]
+solver = none
+boundaryTypeMap = t, I, I  
+
+#[SCALAR01] # k
+#boundaryTypeMap = t, I, t
+#residualTol = 1e-06
+#rho = 1.0
+#diffusivity = 5.0e-4 
+
+#[SCALAR02] # tau
+#boundaryTypeMap = t, I, t
+#residualTol = 1e-06
+#rho = 1.0
+#diffusivity = 5.0e-4  

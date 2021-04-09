@@ -1,0 +1,29 @@
+#!/bin/bash
+#PBS -k o
+#PBS -l nodes=1:ppn=40,walltime=01:00:00
+#PBS -M vcoppoleite@anl.gov
+#PBS -m abe
+#PBS -N pipe
+#PBS -j oe
+
+rm -f logfile
+mv $1.log.$2 $1.log1.$2 2>/dev/null
+
+cd $PBS_O_WORKDIR
+
+cat $PBS_NODEFILE | uniq
+
+echo "pipe" >  SESSION.NAME
+echo `pwd`'/' >>  SESSION.NAME
+rm -f logfile
+rm -f ioinfo
+
+module purge
+module load moose-dev-gcc
+
+export CARDINAL_HOME=/home/cluster2/rhu/projects/NEAMS/cardinal
+
+export NEKRS_HOME=$CARDINAL_HOME/install
+
+mpirun -np 40 ../../cardinal-opt --app SAM -i sam_master.i --nekrs-setup pipe  > logfile
+#mpirun -np 40 ../../cardinal-opt --app SAM -i sam.i  > logfile
