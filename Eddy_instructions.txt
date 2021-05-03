@@ -1,0 +1,48 @@
+Instructions to build cardinal on the "Eddy" cluster
+
+Step 1 – Set environment:
+
+$source .set_env_cardinal
+
+Step 2 – download cardinal from github:
+
+$ git clone https://github.com/neams-th-coe/cardinal.git
+$ cd cardinal
+
+Step 3 – Fetch the minimum submodules to build cardinal:
+
+$ git submodule update --init contrib/nekRS
+$ git submodule update --init contrib/moose
+$ git submodule update --init --recursive contrib/openmc
+
+Step 4 – Edit the update_and_rebuild_petsc.sh file:
+
+$ cd contrib/moose/scripts/
+$ vi update_and_rebuild_petsc.sh
+
+Include this right after line 104:
+--with-cmake-exec=/usr/bin/cmake3  \
+
+Step 5 – Once the modification from Step 4 is done, built the PETSc numeric library:
+
+$ ./updade_and_rebuild_petsc.sh
+
+Step 6 – Build the libMesh finite element library:
+
+$ ./update_and_rebuild_libmesh.sh
+
+Step 7 – Edit the nekrs.mk and the openmc.mk files:
+
+$ cd ../../../config
+$ vi nekrs.mk
+
+In line 23 change replace cmake to cmake3
+
+$ vi openmc.mk
+
+In line 5 change replace cmake to cmake3
+
+Step 8 – Finally, build the application from the top-level directory:
+
+$ cd ../
+$ make
