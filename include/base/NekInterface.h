@@ -192,6 +192,27 @@ bool normalizeHeatSource(const double moose_integral, const double nek_integral,
 double area(const std::vector<int> & boundary_id);
 
 /**
+ * Compute the rho*area of a set of boundary IDs
+ * @param[in] boundary_id nekRS boundary IDs for which to perform the integral
+ * @return rho*area integral
+ */
+double rhoArea(const std::vector<int> & boundary_id);
+
+/**
+ * Compute the rho*area of a boundary 
+ * @param[in] boundary_id nekRS boundary ID for which to perform the integral
+ * @return rho*area integral
+ */
+double rhoArea_Direct(const int boundary_id);
+
+/**
+ * Compute the mass flow rate of a boundary 
+ * @param[in] boundary_id nekRS boundary ID for which to perform the integral
+ * @return mass flow rate integral
+ */
+double massFlowrate_Direct(const int boundary_id);
+
+/**
  * Compute the area integral of a given integrand over a set of boundary IDs
  * @param[in] boundary_id nekRS boundary IDs for which to perform the integral
  * @param[in] integrand field to integrate

@@ -79,8 +79,8 @@ NekApp::NekApp(InputParameters parameters)
   // For the new approach, initialize the space for the user scratch space on the host and device.
   // nekRS does not have a dedicated array to store a "flux" boundary condition, so we
   // will make use of these arrays to write incoming flux values from MOOSE.
-  if (scratch_available)
-   nekrs::initializeScratch();
+//  if (scratch_available)
+//   nekrs::initializeScratch();
 
   // Initialize default dimensional scales assuming a dimensional run is performed.
   // We need to do this construction here so that any tests that *dont* use NekRSProblem

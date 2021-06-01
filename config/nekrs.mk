@@ -20,7 +20,7 @@ LIBMESH_F90_LIST := $(subst $(space),;,$(libmesh_F90))
 $(NEKRS_BUILDDIR)/Makefile: $(NEKRS_DIR)/CMakeLists.txt
 	mkdir -p $(NEKRS_BUILDDIR)
 	cd $(NEKRS_BUILDDIR) && \
-	cmake -L -Wno-dev -Wfatal-errors \
+	cmake3 -L -Wno-dev -Wfatal-errors \
 	-DCMAKE_BUILD_TYPE="$(BUILD_TYPE)" \
 	-DCMAKE_C_COMPILER="$(LIBMESH_CC_LIST)" \
 	-DCMAKE_CXX_COMPILER="$(LIBMESH_CXX_LIST)" \

@@ -834,6 +834,122 @@ double area(const std::vector<int> & boundary_id)
   return total_integral;
 }
 
+double rhoArea(const std::vector<int> & boundary_id)
+{
+  nrs_t * nrs = (nrs_t *) nrsPtr();
+  mesh_t * mesh = nrs->cds->mesh;
+
+  // TODO: This function only works correctly if the density is constant, because
+  // otherwise we need to copy the density from device to host
+  double rho;
+  nrs->options.getArgs("DENSITY", rho);
+
+  double integral = 0.0;
+
+  for (int i = 0; i < mesh->Nelements; ++i) {
+    for (int j = 0; j < mesh->Nfaces; ++j) {
+      int face_id = mesh->EToB[i * mesh->Nfaces + j];
+
+      if (std::find(boundary_id.begin(), boundary_id.end(), face_id) != boundary_id.end())
+      {
+        int offset = i * mesh->Nfaces * mesh->Nfp + j * mesh->Nfp;
+        for (int v = 0; v < mesh->Nfp; ++v) {
+          integral += rho * mesh->sgeo[mesh->Nsgeo * (offset + v) + WSJID];
+        }
+      }
+    }
+  }
+
+  // sum across all processes
+  double total_integral;
+  MPI_Allreduce(&integral, &total_integral, 1, MPI_DOUBLE, MPI_SUM, mesh->comm);
+
+  // scale by rho and area 
+  total_integral *= scales.rho_ref * scales.A_ref;
+
+  return total_integral;
+}
+
+double rhoArea_Direct(const int boundary_id)
+{
+  nrs_t * nrs = (nrs_t *) nrsPtr();
+  mesh_t * mesh = nrs->cds->mesh;
+
+  // TODO: This function only works correctly if the density is constant, because
+  // otherwise we need to copy the density from device to host
+  double rho;
+  nrs->options.getArgs("DENSITY", rho);
+
+  double integral = 0.0;
+
+  for (int i = 0; i < mesh->Nelements; ++i) {
+    for (int j = 0; j < mesh->Nfaces; ++j) {
+      int face_id = mesh->EToB[i * mesh->Nfaces + j];
+
+      if (face_id == boundary_id)
+      {
+        int offset = i * mesh->Nfaces * mesh->Nfp + j * mesh->Nfp;
+        for (int v = 0; v < mesh->Nfp; ++v) {
+          integral += rho * mesh->sgeo[mesh->Nsgeo * (offset + v) + WSJID];
+        }
+      }
+    }
+  }
+
+  // sum across all processes
+  double total_integral;
+  MPI_Allreduce(&integral, &total_integral, 1, MPI_DOUBLE, MPI_SUM, mesh->comm);
+
+  // scale by rho and area 
+  total_integral *= scales.rho_ref * scales.A_ref;
+
+  return total_integral;
+}
+
+double massFlowrate_Direct(const int boundary_id)
+{
+  nrs_t * nrs = (nrs_t *) nrsPtr();
+  mesh_t * mesh = nrs->cds->mesh;
+
+  // TODO: This function only works correctly if the density is constant, because
+  // otherwise we need to copy the density from device to host
+  double rho;
+  nrs->options.getArgs("DENSITY", rho);
+
+  double integral = 0.0;
+
+  for (int i = 0; i < mesh->Nelements; ++i) {
+    for (int j = 0; j < mesh->Nfaces; ++j) {
+      int face_id = mesh->EToB[i * mesh->Nfaces + j];
+
+      if (face_id == boundary_id)
+      {
+        int offset = i * mesh->Nfaces * mesh->Nfp + j * mesh->Nfp;
+        for (int v = 0; v < mesh->Nfp; ++v) {
+          int vol_id = mesh->vmapM[offset + v];
+          int surf_offset = mesh->Nsgeo * (offset + v);
+
+          double normal_velocity =
+            nrs->U[vol_id + 0 * nrs->fieldOffset] * mesh->sgeo[surf_offset + NXID] +
+            nrs->U[vol_id + 1 * nrs->fieldOffset] * mesh->sgeo[surf_offset + NYID] +
+            nrs->U[vol_id + 2 * nrs->fieldOffset] * mesh->sgeo[surf_offset + NZID];
+
+          integral += rho * normal_velocity * mesh->sgeo[surf_offset + WSJID];
+        }
+      }
+    }
+  }
+
+  // sum across all processes
+  double total_integral;
+  MPI_Allreduce(&integral, &total_integral, 1, MPI_DOUBLE, MPI_SUM, mesh->comm);
+
+  // dimensionalize the mass flux and area
+  total_integral *= scales.rho_ref * scales.U_ref * scales.A_ref;
+
+  return total_integral;
+}
+
 double sideIntegral(const std::vector<int> & boundary_id, const field::NekFieldEnum & integrand)
 {
   nrs_t * nrs = (nrs_t *) nrsPtr();
