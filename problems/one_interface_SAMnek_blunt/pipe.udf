@@ -1,0 +1,164 @@
+//
+// nekRS User Defined File
+//
+
+#include <math.h>
+#include "udf.hpp"
+#include <iostream>
+#include "plugins/RANSktau.hpp"
+
+#define MAX_SCRATCH_FIELDS 7
+
+/* User Functions */
+
+static dfloat rho, mueLam;
+occa::kernel userfKernel;
+
+void userq(nrs_t *nrs, dfloat time, occa::memory o_S, occa::memory o_FS)
+{
+  mesh_t *mesh = nrs->mesh;
+  cds_t *cds   = nrs->cds;
+
+  RANSktau::updateSourceTerms();
+}
+
+void uservp(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_S,
+            occa::memory o_UProp, occa::memory o_SProp)
+{
+  mesh_t *mesh = nrs->mesh;
+  cds_t *cds   = nrs->cds;
+
+  RANSktau::updateProperties();
+
+  dfloat conductivity;
+  nrs->options.getArgs("SCALAR00 DIFFUSIVITY", conductivity);
+  const dfloat Pr_t = 0.7;
+  occa::memory o_mue_t = RANSktau::o_mue_t();
+  occa::memory o_temp_mue = cds->o_diff + 0*cds->fieldOffset*sizeof(dfloat);
+  nrs->scalarScaledAddKernel(nrs->Nlocal, mueLam, 1/Pr_t, o_mue_t, o_temp_mue);
+}
+
+void UDF_LoadKernels(nrs_t *nrs)
+{
+  RANSktau::buildKernel(nrs);
+}
+
+void UDF_Setup(nrs_t *nrs)
+{
+  mesh_t *mesh = nrs->mesh;
+  cds_t *cds = nrs->cds;
+
+  udf.properties = &uservp;
+  udf.sEqnSource = &userq;
+
+  const int scalarFieldStart = 1;
+  nrs->options.getArgs("VISCOSITY", mueLam);
+  nrs->options.getArgs("DENSITY", rho);
+  RANSktau::setup(nrs, mueLam, rho, scalarFieldStart);
+
+
+// initial conditions
+  int n_gll_points = mesh->Np * mesh->Nelements;
+
+  for (int n = 0; n < n_gll_points; ++n)
+  {
+
+    nrs->U[n + 0 * nrs->fieldOffset] = 1.0;    //x-velocity
+    nrs->U[n + 1 * nrs->fieldOffset] = 0.0;    // y-velocity
+    nrs->U[n + 2 * nrs->fieldOffset] = 0.0;    // z-velocity
+
+    nrs->P[n] = 0.0; // pressure
+
+    nrs->cds->S[n + 0 * nrs->cds->fieldOffset] = 1.0; // temperature
+
+    nrs->cds->S[n + 1 * nrs->cds->fieldOffset] = 0.00375; // k
+    nrs->cds->S[n + 2 * nrs->cds->fieldOffset] = 0.114310; // tau
+
+  }
+
+std::cout << "Calling UDF_Setup " << std::endl;
+
+// clear and create scratch space
+if (nrs->usrwrk)
+{
+  nrs->o_usrwrk.free();
+  free(nrs->usrwrk);
+}
+
+nrs->usrwrk = (double *) calloc(MAX_SCRATCH_FIELDS * nrs->fieldOffset, sizeof(double));
+
+// 
+dfloat rad = 0.05;
+dfloat Rcut = 0.95*rad; // zone where velocity is flat
+dfloat Rdiff = rad-Rcut;
+
+const int boundary_id = 1; //hardcode boundary id for inlet
+
+double area_in = 0.0;
+double factor  = 0.0;
+
+for (int i = 0; i < mesh->Nelements; ++i) {
+  for (int j = 0; j < mesh->Nfaces; ++j) {
+    int face_id = mesh->EToB[i * mesh->Nfaces + j];
+
+    if (face_id == boundary_id)
+    {
+      int offset = i * mesh->Nfaces * mesh->Nfp + j * mesh->Nfp;
+ 
+      for (int v = 0; v < mesh->Nfp; ++v) {
+        const int n   = v + j * mesh->Nfp ;
+        const int sk  = i *mesh->Nfaces * mesh->Nfp + n;
+        const int idM = mesh->vmapM[sk]; // node index for this boundary node
+
+        dfloat y = mesh->y[idM];
+        dfloat z = mesh->z[idM];
+        
+        nrs->usrwrk[idM + 1 * nrs->fieldOffset] = rad - std::sqrt(y*y + z*z);
+        nrs->usrwrk[idM + 2 * nrs->fieldOffset] = rad + std::sqrt(y*y + z*z); // get (R+r) for inlet distribution
+        nrs->usrwrk[idM + 3 * nrs->fieldOffset] = std::sqrt(y*y + z*z); // r for inlet distribution
+
+        dfloat wd, Rpr, r,fact;
+
+        wd    = nrs->usrwrk[idM + 1*nrs->fieldOffset];
+        Rpr   = nrs->usrwrk[idM + 2*nrs->fieldOffset];
+        r     = nrs->usrwrk[idM + 3*nrs->fieldOffset];
+
+        area_in += mesh->sgeo[mesh->Nsgeo * (offset + v) + WSJID];
+
+        if (r < Rcut) {
+         fact = 1;
+         }
+         else {
+         fact = 1*(1 - ((r-Rcut)*(r-Rcut)/Rdiff/Rdiff));
+         }
+        factor += fact * mesh->sgeo[mesh->Nsgeo * (offset + v) + WSJID] ; // blunt profile
+
+      }
+    }
+  }
+}
+
+// sum across all processes
+double total_area;
+MPI_Allreduce(&area_in, &total_area, 1, MPI_DOUBLE, MPI_SUM, mesh->comm);
+
+double total_factor;
+MPI_Allreduce(&factor, &total_factor, 1, MPI_DOUBLE, MPI_SUM, mesh->comm);
+
+double new_factor = total_area/total_factor;
+
+// put correction factor into work array
+for (int i = 0; i < mesh->Nelements * mesh->Np; ++i) {
+  nrs->usrwrk[i + 4 * nrs->fieldOffset] = new_factor;
+}
+
+// copy to device, for oudf functions
+nrs->o_usrwrk = mesh->device.malloc(MAX_SCRATCH_FIELDS * nrs->fieldOffset* sizeof(double), nrs->usrwrk);
+
+
+}
+
+void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
+{
+std::cout << "Calling UDF_ExecuteStep " << std::endl;
+}

@@ -1,0 +1,54 @@
+// Boundary conditions
+/* inflow 1, outflow 2, wall 3 */
+
+#include <iostream>
+
+
+void velocityDirichletConditions(bcData *bc)
+{
+  dfloat wd, Rpr, r, R;
+
+  dfloat u_sam = bc->wrk[bc->idM];// area-corrected velocity from SAM
+
+  wd    = bc->wrk[bc->idM + 1*bc->fieldOffset];
+  Rpr   = bc->wrk[bc->idM + 2*bc->fieldOffset];
+  r     = bc->wrk[bc->idM + 3*bc->fieldOffset];
+  R     = 0.05;
+  dfloat factor = bc->wrk[bc->idM + 4*bc->fieldOffset];
+
+  dfloat Rcut = 0.95*R;
+  dfloat Rdiff = R-Rcut;
+
+  if (r < Rcut) {
+   bc->u = u_sam*factor;
+   }
+   else { 
+   bc->u = u_sam*(1 - ((r-Rcut)*(r-Rcut)/Rdiff/Rdiff))*factor; // blunt profile
+   }
+
+  bc->v = 0.0;
+  bc->w = 0.0;
+}
+
+void scalarDirichletConditions(bcData *bc)
+{
+  dfloat wd, Re, darcy, utau, sigk, kmax, yplus, yk, tke, tau;
+  wd    = bc->wrk[bc->idM + 1*bc->fieldOffset];
+  Re    = 10000.0;
+  darcy = 0.316/(pow(Re,0.25));
+  utau  = sqrt(darcy/8.0);
+  sigk  = 0.6;
+  kmax  = 2.5*utau*utau;
+  yplus = max(wd*utau*Re,1.0e-6);
+  yk    = 30.0;
+  tke   = kmax*exp(-pow(log10(yplus/yk),2.0)/(2.0*sigk*sigk));
+  tau   = 0.078*(wd*wd)*Re/6.0;
+  tke   = min(tke,7.6e-3);
+  tau   = min(tau,1.3);
+
+  bc->s = 0;
+  if (bc->scalarId == 0) bc->s = 1.0;
+  if((bc->scalarId == 1)&&(bc->id == 1)) bc->s = tke;
+  if((bc->scalarId == 2)&&(bc->id == 1)) bc->s = tau;
+}
+
