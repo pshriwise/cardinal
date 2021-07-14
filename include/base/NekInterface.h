@@ -92,9 +92,6 @@ void freeScratch();
 /// Copy the flux from host to device
 void copyScratchToDevice();
 
-/// Copy volume deformation of mesh from host to device for moving-mesh problems
-void copyDeformationToDevice();
-
 /**
  * Determine the receiving counts and displacements for all gather routines
  * @param[in] base_counts unit-wise receiving counts for each process
@@ -160,6 +157,14 @@ void volumeTemperature(const int order, const bool needs_interpolation, double* 
  * @param[in] order enumeration of the surface mesh order (0 = first, 1 = second, etc.)
  * @param[in] flux_elem flux at the libMesh nodes
  */
+  void u_inlet(const int elem_id, const int order, const double u_sam);
+
+/**
+ * Interpolate a volume-based MOOSE flux into the nekRS mesh
+ * @param[in] elem_id global element ID
+ * @param[in] order enumeration of the surface mesh order (0 = first, 1 = second, etc.)
+ * @param[in] flux_elem flux at the libMesh nodes
+ */
 void flux_volume(const int elem_id, const int order, double * flux_elem);
 
 /**
@@ -169,18 +174,6 @@ void flux_volume(const int elem_id, const int order, double * flux_elem);
  * @param[in] source_elem heat source at the libMesh nodes
  */
 void heat_source(const int elem_id, const int order, double * source_elem);
-
-//@{
-/**
- * Interpolate the MOOSE volume mesh displacement onto the nekRS mesh
- * @param[in] elem_id global element ID
- * @param[in] order enumeration of the volume mesh order (0 = first, 1 = second, etc.)
- * @param[in] disp_vol displacement at the libMesh nodes
- */
-void map_volume_x_deformation(const int elem_id, const int order, double * disp_vol);
-void map_volume_y_deformation(const int elem_id, const int order, double * disp_vol);
-void map_volume_z_deformation(const int elem_id, const int order, double * disp_vol);
-//@}
 
 /**
  * Integrate the interpolated flux over the boundaries of the data transfer mesh
@@ -218,6 +211,28 @@ bool normalizeHeatSource(const double moose_integral, const double nek_integral,
  * @return area integral
  */
 double area(const std::vector<int> & boundary_id);
+
+/**
+ * Compute the area integral of a given integrand over a set of boundary IDs
+ * @param[in] boundary_id nekRS boundary IDs for which to perform the integral
+ * @param[in] integrand field to integrate
+ * @return area integral of a field
+ */
+double rhoArea(const std::vector<int> & boundary_id);
+
+/**
+ * Compute the rho*area of a boundary 
+ * @param[in] boundary_id nekRS boundary ID for which to perform the integral
+ * @return rho*area integral
+ */
+double rhoArea_Direct(const int boundary_id);
+
+/**
+ * Compute the mass flow rate of a boundary 
+ * @param[in] boundary_id nekRS boundary ID for which to perform the integral
+ * @return mass flow rate integral
+ */
+double massFlowrate_Direct(const int boundary_id);
 
 /**
  * Compute the area integral of a given integrand over a set of boundary IDs

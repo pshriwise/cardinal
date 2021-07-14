@@ -1,0 +1,88 @@
+//
+// nekRS User Defined File
+//
+
+#include <math.h>
+#include "udf.hpp"
+#include <iostream>
+#include "plugins/RANSktau.hpp"
+
+#define MAX_SCRATCH_FIELDS 7
+
+/* User Functions */
+
+static dfloat rho, mueLam;
+occa::kernel userfKernel;
+// static occa::kernel scalarScaledAddKernel;
+
+void userq(nrs_t *nrs, dfloat time, occa::memory o_S, occa::memory o_FS)
+{
+//  mesh_t *mesh = nrs->meshV;
+  auto mesh = nrs->cds->mesh[0];
+  cds_t *cds   = nrs->cds;
+
+  RANSktau::updateSourceTerms();
+}
+
+void uservp(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_S,
+            occa::memory o_UProp, occa::memory o_SProp)
+{
+//  mesh_t *mesh = nrs->meshV;
+  auto mesh = nrs->cds->mesh[0];
+  cds_t *cds   = nrs->cds;
+
+  RANSktau::updateProperties();
+
+  dfloat conductivity;
+  platform->options.getArgs("SCALAR00 DIFFUSIVITY", conductivity);
+  const dfloat Pr_t = 0.7;
+  occa::memory o_mue_t = RANSktau::o_mue_t();
+  occa::memory o_temp_mue = cds->o_diff + 0*cds->fieldOffset[0]*sizeof(dfloat);
+//  scalarScaledAddKernel(mesh->Nlocal, mueLam, 1/Pr_t, o_mue_t, o_temp_mue);
+}
+
+void UDF_LoadKernels(nrs_t *nrs)
+{
+//  scalarScaledAddKernel = udfBuildKernel(nrs, "scalarScaledAdd");
+  RANSktau::buildKernel(nrs);
+}
+
+void UDF_Setup(nrs_t *nrs)
+{
+//  mesh_t *mesh = nrs->meshV;
+  auto mesh = nrs->cds->mesh[0];
+  cds_t *cds = nrs->cds;
+
+  udf.properties = &uservp;
+  udf.sEqnSource = &userq;
+
+  const int scalarFieldStart = 1;
+  platform->options.getArgs("VISCOSITY", mueLam);
+  platform->options.getArgs("DENSITY", rho);
+  RANSktau::setup(nrs, mueLam, rho, scalarFieldStart);
+
+
+// initial conditions
+  int n_gll_points = mesh->Np * mesh->Nelements;
+
+  for (int n = 0; n < n_gll_points; ++n)
+  {
+
+    nrs->U[n + 0 * nrs->fieldOffset] = 1.0;    //x-velocity
+    nrs->U[n + 1 * nrs->fieldOffset] = 0.0;    // y-velocity
+    nrs->U[n + 2 * nrs->fieldOffset] = 0.0;    // z-velocity
+
+    nrs->P[n] = 0.0; // pressure
+
+    nrs->cds->S[n + 0 * nrs->cds->fieldOffset[0]] = 1.0; // temperature
+
+    nrs->cds->S[n + 1 * nrs->cds->fieldOffset[0]] = 0.00375; // k
+    nrs->cds->S[n + 2 * nrs->cds->fieldOffset[0]] = 0.114310; // tau
+
+  }
+}
+
+void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
+{
+std::cout << "Calling UDF_ExecuteStep " << std::endl;
+}

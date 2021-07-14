@@ -456,81 +456,31 @@ void flux(const int elem_id, const int order, double * flux_face)
   }
 }
 
-void map_volume_x_deformation(const int elem_id, const int order, double * disp_vol)
+void u_inlet(const int elem_id, const int order, const double u_sam)
 {
   nrs_t * nrs = (nrs_t *) nrsPtr();
   mesh_t * mesh = temperatureMesh();
 
   int end_1d = mesh->Nq;
   int start_1d = order + 2;
-  int end_3d = mesh->Np;
-  int start_3d = start_1d * start_1d * start_1d;
+  int end_2d = end_1d * end_1d;
 
-  // We can only write into the nekRS scratch space if that volume is "owned" by the current process
-  if (commRank() == nek_volume_coupling.processor_id(elem_id))
+  // We can only write into the nekRS scratch space if that face is "owned" by the current process
+  if (commRank() == nek_boundary_coupling.processor_id(elem_id))
   {
-    int e = nek_volume_coupling.element[elem_id];
-    double * source_disp = (double*) calloc(mesh->Np, sizeof(double));
+    int e = nek_boundary_coupling.element[elem_id];
+    int f = nek_boundary_coupling.face[elem_id];
 
-    interpolateVolumeHex3D(matrix.incoming, disp_vol, start_1d, source_disp, end_1d);
+    double * scratch = (double*) calloc(start_1d * end_1d, sizeof(double));
 
-    int id = e * mesh->Np;
-    for (int v = 0; v < mesh->Np; ++v)
-      mesh->x[id + v] += source_disp[v];
+    int offset = e * mesh->Nfaces * mesh->Nfp + f * mesh->Nfp;
+    for (int i = 0; i < end_2d; ++i)
+    {
+      int id = mesh->vmapM[offset + i];
+      nrs->usrwrk[id] = u_sam;
+    }
 
-    free(source_disp);
-  }
-}
-
-void map_volume_y_deformation(const int elem_id, const int order, double * disp_vol)
-{
-  nrs_t * nrs = (nrs_t *) nrsPtr();
-  mesh_t * mesh = temperatureMesh();
-
-  int end_1d = mesh->Nq;
-  int start_1d = order + 2;
-  int end_3d = mesh->Np;
-  int start_3d = start_1d * start_1d * start_1d;
-
-  // We can only write into the nekRS scratch space if that volume is "owned" by the current process
-  if (commRank() == nek_volume_coupling.processor_id(elem_id))
-  {
-    int e = nek_volume_coupling.element[elem_id];
-    double * source_disp = (double*) calloc(mesh->Np, sizeof(double));
-
-    interpolateVolumeHex3D(matrix.incoming, disp_vol, start_1d, source_disp, end_1d);
-
-    int id = e * mesh->Np;
-    for (int v = 0; v < mesh->Np; ++v)
-      mesh->y[id + v] += source_disp[v];
-
-    free(source_disp);
-  }
-}
-
-void map_volume_z_deformation(const int elem_id, const int order, double * disp_vol)
-{
-  nrs_t * nrs = (nrs_t *) nrsPtr();
-  mesh_t * mesh = temperatureMesh();
-
-  int end_1d = mesh->Nq;
-  int start_1d = order + 2;
-  int end_3d = mesh->Np;
-  int start_3d = start_1d * start_1d * start_1d;
-
-  // We can only write into the nekRS scratch space if that volume is "owned" by the current process
-  if (commRank() == nek_volume_coupling.processor_id(elem_id))
-  {
-    int e = nek_volume_coupling.element[elem_id];
-    double * source_disp = (double*) calloc(mesh->Np, sizeof(double));
-
-    interpolateVolumeHex3D(matrix.incoming, disp_vol, start_1d, source_disp, end_1d);
-
-    int id = e * mesh->Np;
-    for (int v = 0; v < mesh->Np; ++v)
-      mesh->z[id + v] += source_disp[v];
-
-    free(source_disp);
+    free(scratch);
   }
 }
 
@@ -691,25 +641,7 @@ void limitTemperature(const double * min_T, const double * max_T)
 void copyScratchToDevice()
 {
   nrs_t * nrs = (nrs_t *) nrsPtr();
-
-  // From Cardinal, we only write the first two "slices" in nrs->usrwrk. But, the user might
-  // be writing other parts of this scratch space from the .udf file. So, we need to be sure
-  // to only copy the slices reserved for Cardinal, so that we don't accidentally overwrite other
-  // parts of o_usrwrk (which from the order of the UDF calls, would always happen *after* the
-  // flux and/or source transfers into nekRS)
-
-  // first two slices are always reserved for the heat flux and volumetric heat source. Either one
-  // or both will be present, but we always reserve the first two slices for this coupling data.
-  nrs->o_usrwrk.copyFrom(nrs->usrwrk, 2 * scalarFieldOffset() * sizeof(dfloat), 0);
-}
-
-void copyDeformationToDevice()
-{
-  mesh_t * mesh = temperatureMesh();
-  mesh->o_x.copyFrom(mesh->x);
-  mesh->o_y.copyFrom(mesh->y);
-  mesh->o_z.copyFrom(mesh->z);
-  mesh->update();
+  nrs->o_usrwrk.copyFrom(nrs->usrwrk);
 }
 
 double sideMaxValue(const std::vector<int> & boundary_id, const field::NekFieldEnum & field)
@@ -929,6 +861,122 @@ double area(const std::vector<int> & boundary_id)
 
   // scale the boundary integral
   total_integral *= scales.A_ref;
+
+  return total_integral;
+}
+
+double rhoArea(const std::vector<int> & boundary_id)
+{ 
+  nrs_t * nrs = (nrs_t *) nrsPtr();
+  mesh_t * mesh = temperatureMesh();
+  
+  // TODO: This function only works correctly if the density is constant, because
+  // otherwise we need to copy the density from device to host
+  double rho;
+  platform->options.getArgs("DENSITY", rho);
+  
+  double integral = 0.0;
+  
+  for (int i = 0; i < mesh->Nelements; ++i) {
+    for (int j = 0; j < mesh->Nfaces; ++j) {
+      int face_id = mesh->EToB[i * mesh->Nfaces + j];
+      
+      if (std::find(boundary_id.begin(), boundary_id.end(), face_id) != boundary_id.end())
+      { 
+        int offset = i * mesh->Nfaces * mesh->Nfp + j * mesh->Nfp;
+        for (int v = 0; v < mesh->Nfp; ++v) {
+          integral += rho * mesh->sgeo[mesh->Nsgeo * (offset + v) + WSJID];
+        }
+      }
+    }
+  }
+
+  // sum across all processes
+  double total_integral;
+  MPI_Allreduce(&integral, &total_integral, 1, MPI_DOUBLE, MPI_SUM, platform->comm.mpiComm);
+
+  // scale by rho and area 
+  total_integral *= scales.rho_ref * scales.A_ref;
+
+  return total_integral;
+}
+
+double rhoArea_Direct(const int boundary_id)
+{
+  nrs_t * nrs = (nrs_t *) nrsPtr();
+  mesh_t * mesh = temperatureMesh();
+
+  // TODO: This function only works correctly if the density is constant, because
+  // otherwise we need to copy the density from device to host
+  double rho;
+  platform->options.getArgs("DENSITY", rho);
+
+  double integral = 0.0;
+
+  for (int i = 0; i < mesh->Nelements; ++i) {
+    for (int j = 0; j < mesh->Nfaces; ++j) {
+      int face_id = mesh->EToB[i * mesh->Nfaces + j];
+
+      if (face_id == boundary_id)
+      {
+        int offset = i * mesh->Nfaces * mesh->Nfp + j * mesh->Nfp;
+        for (int v = 0; v < mesh->Nfp; ++v) {
+          integral += rho * mesh->sgeo[mesh->Nsgeo * (offset + v) + WSJID];
+        }
+      }
+    }
+  }
+
+  // sum across all processes
+  double total_integral;
+  MPI_Allreduce(&integral, &total_integral, 1, MPI_DOUBLE, MPI_SUM, platform->comm.mpiComm);
+
+  // scale by rho and area 
+  total_integral *= scales.rho_ref * scales.A_ref;
+
+  return total_integral;
+}
+
+double massFlowrate_Direct(const int boundary_id)
+{
+  nrs_t * nrs = (nrs_t *) nrsPtr();
+  mesh_t * mesh = temperatureMesh();
+
+  // TODO: This function only works correctly if the density is constant, because
+  // otherwise we need to copy the density from device to host
+  double rho;
+  platform->options.getArgs("DENSITY", rho);
+
+  double integral = 0.0;
+
+  for (int i = 0; i < mesh->Nelements; ++i) {
+    for (int j = 0; j < mesh->Nfaces; ++j) {
+      int face_id = mesh->EToB[i * mesh->Nfaces + j];
+
+      if (face_id == boundary_id)
+      {
+        int offset = i * mesh->Nfaces * mesh->Nfp + j * mesh->Nfp;
+        for (int v = 0; v < mesh->Nfp; ++v) {
+          int vol_id = mesh->vmapM[offset + v];
+          int surf_offset = mesh->Nsgeo * (offset + v);
+
+          double normal_velocity =
+            nrs->U[vol_id + 0 * nrs->fieldOffset] * mesh->sgeo[surf_offset + NXID] +
+            nrs->U[vol_id + 1 * nrs->fieldOffset] * mesh->sgeo[surf_offset + NYID] +
+            nrs->U[vol_id + 2 * nrs->fieldOffset] * mesh->sgeo[surf_offset + NZID];
+
+          integral += rho * normal_velocity * mesh->sgeo[surf_offset + WSJID];
+        }
+      }
+    }
+  }
+
+  // sum across all processes
+  double total_integral;
+  MPI_Allreduce(&integral, &total_integral, 1, MPI_DOUBLE, MPI_SUM, platform->comm.mpiComm);
+
+  // dimensionalize the mass flux and area
+  total_integral *= scales.rho_ref * scales.U_ref * scales.A_ref;
 
   return total_integral;
 }
