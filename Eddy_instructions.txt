@@ -46,3 +46,16 @@ Step 8 – Finally, build the application from the top-level directory:
 
 $ cd ../
 $ make
+
+
+If you have errors with eddy using cmake instead of cmake3, use the following instructions to create a symbolic link and inform eddy nodes in PBSJOB script.
+
+Step 1 : create a bin file in your home directory 
+$ mkdir ~/bin
+
+Step 2:  create symbolic link of cmake3 into this bin directory, under the name cmake
+$ ln -s /bin/cmake3 ~/bin/cmake
+
+Step 3: in PBSJob script, add this new bin directory to the computing node's PATH, so that it knows to use this cmake3 symbolic link 
+export PATH="your home directory/bin:$PATH
+ 
