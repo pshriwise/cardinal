@@ -1,0 +1,20 @@
+// Boundary conditions
+/* inflow 1, outflow 2, wall 3 */
+
+#include <iostream>
+
+
+void velocityDirichletConditions(bcData *bc)
+{
+  dfloat u_sam = bc->wrk[bc->idM]; // area-corrected velocity from SAM
+
+  bc->u = u_sam;
+  bc->v = 0.0;
+  bc->w = 0.0;
+}
+
+void scalarDirichletConditions(bcData *bc)
+{
+  if (bc->scalarId == 0) bc->s = 1.0;
+}
+
