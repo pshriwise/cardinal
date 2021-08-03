@@ -478,6 +478,7 @@ void u_inlet(const int elem_id, const int order, const double u_sam)
 
     free(scratch);
   }
+}
 
 void save_initial_mesh()
 {

@@ -19,8 +19,9 @@ InputParameters validParams<NekRSProblem1d>();
  * fully abstracted from the Nek5000 backend approach adopted in the similar, but
  * more limited, 'NekProblem' class.
  *
- * The velocity from SAM at a coupled interface is interpolated onto the nekRS mesh by
- * an interpolation matrix.
+ * The nekRS temperature solution is interpolated onto the NekRSMesh by multiplying the
+ * nekRS temperature by an interpolation matrix. In the opposite direction, the flux
+ * from MOOSE is interpolated onto the nekRS mesh by a similar interpolation matrix.
  * This interpolation matrix expresses the
  * nekRS/MOOSE solutions in terms of interpolating Legendre polynomials, and is equal to
  * \f$V_{moose}V_{nek}^{-1}\f$, where \f$V_{moose}\f$ is the Vandermonde matrix of the
@@ -28,8 +29,6 @@ InputParameters validParams<NekRSProblem1d>();
  * mesh's 1-D quadrature points. If the interpolation matrix is unity, this means that
  * the libMesh node points exactly coincide with the nekRS quadrature point locations, and
  * hence no interpolation is actually needed.
- * I'm keeping all the things from the former NekRSProblem1d, but just adding stuff for
- * the velocity coupling.
  */
 class NekRSProblem1d : public ExternalProblem
 {
@@ -56,30 +55,11 @@ public:
    */
   virtual void initialSetup() override;
 
-  /**
-   * Fill an outgoing auxiliary variable field with nekRS solution data
-   * \param[in] var_number auxiliary variable number
-   * \param[in] value nekRS solution data to fill the variable with
-   */
-  virtual void fillAuxVariable(const unsigned int var_number, const double * value);
-
-  /// Send boundary heat flux to nekRS
-  void sendBoundaryHeatFluxToNek();
-
-  /// Send volume heat source to nekRS
-  void sendVolumeHeatSourceToNek();
-
-  /// Send boundary velocity to nekRS
-  void sendBoundaryVelocityToNek();
-
-  /// Send boundary velocity to nekRS while conserving mass flow rate
-  void sendBoundaryVelocityCorrectedToNek();
-
   /// Get boundary temperature from nekRS
   void getBoundaryTemperatureFromNek();
 
-  /// Get volume temperature from nekRS
-  void getVolumeTemperatureFromNek();
+  // Send boundary velocity to nekRS while conserving mass flow rate
+  void sendBoundaryVelocityCorrectedToNek();
 
   virtual void externalSolve() override;
 
@@ -125,6 +105,9 @@ public:
 protected:
   std::unique_ptr<NumericVector<Number>> _serialized_solution;
 
+  /// Whether the problem is a moving mesh problem i.e. with on-the-fly mesh deformation enabled
+  const bool & _moving_mesh;
+
   /**
    * \brief Whether to only send heat flux to nekRS on the multiapp synchronization steps
    *
@@ -146,7 +129,7 @@ protected:
    * even bother computing the interpolated data, since it's not used if this parameter
    * is set to true.
    */
-  const bool & _minimize_transfers_in;
+  const bool _minimize_transfers_in;
 
   /**
    * \brief Whether to only send temperature from nekRS on the multiapp synchronization steps
@@ -218,14 +201,11 @@ protected:
   const Real & _Cp_0;
   //@}
 
-  /// Whether the nekRS inlet velocity is parabolic
-  const bool & _parabolic;
-
   /// Whether there's a SAM to nekRS coupling interface 
   const bool & _SAMtoNek_interface;
 
-  /// Whether there's a nekRS to SAM coupling interface 
-  const bool & _NektoSAM_interface;
+  /// SAM mass flow rate passed to nek
+  const PostprocessorValue * _SAM_mflow_inlet_interface = nullptr;
 
   /// Start time of the simulation based on nekRS's .par file
   double _start_time;
@@ -233,41 +213,11 @@ protected:
   /// The time stepper used for selection of time step size
   NekTimeStepper * _timestepper = nullptr;
 
-  /**
-   * \brief Total surface-integrated flux coming from the coupled MOOSE app.
-   *
-   * The mesh used for the MOOSE app may be very different from the mesh used by nekRS.
-   * Elements may be much finer/coarser, and one element on the MOOSE app may not be a
-   * clear subset/superset of the elements on the nekRS mesh. Therefore, to ensure
-   * conservation of energy, we send the total flux integral to nekRS for internal
-   * normalization of the heat flux applied on the nekRS mesh.
-   */
-  const PostprocessorValue * _flux_integral = nullptr;
+  /// Postprocessor to limit the minimum temperature
+  const PostprocessorValue * _min_T = nullptr;
 
-  /**
-   * \brief Total volume-integrated heat source coming from the coupled MOOSE app.
-   *
-   * The mesh used for the MOOSE app may be very different from the mesh used by nekRS.
-   * Elements may be much finer/coarser, and one element on the MOOSE app may not be a
-   * clear subset/superset of the elements on the nekRS mesh. Therefore, to ensure
-   * conservation of energy, we send the total source integral to nekRS for internal
-   * normalization of the heat source applied on the nekRS mesh.
-   */
-  const PostprocessorValue * _source_integral = nullptr;
-
-  /**
-   * \brief Total volume-integrated heat source coming from the coupled MOOSE app.
-   *
-   * The mesh used for the MOOSE app may be very different from the mesh used by nekRS.
-   * Elements may be much finer/coarser, and one element on the MOOSE app may not be a
-   * clear subset/superset of the elements on the nekRS mesh. Therefore, to ensure
-   * conservation of energy, we send the total source integral to nekRS for internal
-   * normalization of the heat source applied on the nekRS mesh.
-   */
-  const PostprocessorValue * _vel_interface = nullptr;
- 
-  /// SAM mass flow rate passed ot nek
-  const PostprocessorValue * _SAM_mflow_inlet_interface = nullptr;
+  /// Postprocessor to limit the maximum temperature
+  const PostprocessorValue * _max_T = nullptr;
 
   /// nekRS temperature interpolated onto the data transfer mesh
   double * _T = nullptr;
@@ -275,14 +225,20 @@ protected:
   /// MOOSE flux interpolated onto the (boundary) data transfer mesh
   double * _flux_face = nullptr;
 
-  /// MOOSE velocity interpolated onto the (boundary) data transfer mesh
-//  double * _vel_face = nullptr;
-
   /// MOOSE flux interpolated onto the (volume) data transfer mesh
   double * _flux_elem = nullptr;
 
   /// MOOSE heat source interpolated onto the data transfer mesh
   double * _source_elem = nullptr;
+
+  /// displacement in x for all nodes from MOOSE, for moving mesh problems
+  double * _displacement_x = nullptr;
+
+  /// displacement in y for all nodes from MOOSE, for moving mesh problems
+  double * _displacement_y = nullptr;
+
+  /// displacement in z for all nodes from MOOSE, for moving mesh problems
+  double * _displacement_z = nullptr;
 
   /// temperature transfer variable written to be nekRS
   unsigned int _temp_var;
@@ -290,11 +246,17 @@ protected:
   /// flux transfer variable read from by nekRS
   unsigned int _avg_flux_var;
 
-  /// volumetric heat source variable read from by nekRS
-  unsigned int _heat_source_var;
+  /// x-displacment transfer variable read from for moving mesh problems
+  unsigned int _disp_x_var;
 
-  /// velocity transfer variable read from by nekRS
-//  unsigned int _vel_var;
+  /// y-displacment transfer variable read from for moving mesh problems
+  unsigned int _disp_y_var;
+
+  /// z-displacment transfer variable read from for moving mesh problems
+  unsigned int _disp_z_var;
+
+ /// volumetric heat source variable read from by nekRS
+  unsigned int _heat_source_var;
 
   /// Descriptive string for data transfer going in to nekRS
   std::string _incoming;
@@ -304,9 +266,6 @@ protected:
 
   /// Number of points for interpolated fields (temperature, density) on the MOOSE mesh
   int _n_points;
-
-  /// Name of postprocessor containing signal of when a synchronization has occurred
-  const PostprocessorName * _transfer_in_name = nullptr;
 
   /// Postprocessor containing the signal of when a synchronization has occurred
   const PostprocessorValue * _transfer_in = nullptr;

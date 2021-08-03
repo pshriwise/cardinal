@@ -189,7 +189,6 @@ void writeVolumeSolution(const int elem_id, const int order, const field::NekWri
  * Save the initial mesh in nekRS for moving mesh problems
  */
 void save_initial_mesh();
->>>>>>> origin/nekrs
 
 /**
  * Integrate the interpolated flux over the boundaries of the data transfer mesh
