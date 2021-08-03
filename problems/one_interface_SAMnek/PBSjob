@@ -22,8 +22,11 @@ rm -f ioinfo
 module purge
 module load moose-dev-gcc
 
-export CARDINAL_HOME=/home/cluster2/rhu/projects/NEAMS/victor/cardinal
+export CARDINAL_HOME=/home/cluster2/rhu/projects/NEAMS/aaron/cardinal
 export NEKRS_HOME=$CARDINAL_HOME/install
+
+export PATH=/home/cluster1/ahuxford/nodebin:$PATH
+
 
 mpirun -np 32 $CARDINAL_HOME/cardinal-opt --app sam -i coupled_master.i --nekrs-setup pipe  > logfile
 
