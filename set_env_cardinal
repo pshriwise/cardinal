@@ -10,8 +10,7 @@ export F77=mpif77
 
 
 export PETSC_ARCH=arch-moose
-export PETSC_DIR=/home/cluster2/rhu/projects/NEAMS/cardinal/contrib/moose/petsc
-
-export CARDINAL_HOME=/home/cluster2/rhu/projects/NEAMS/cardinal
+export PETSC_DIR=/home/cluster2/rhu/projects/NEAMS/aaron/cardinal/contrib/moose/petsc
+export CARDINAL_HOME=/home/cluster2/rhu/projects/NEAMS/aaron/cardinal
 
 export NEKRS_HOME=$CARDINAL_HOME/install

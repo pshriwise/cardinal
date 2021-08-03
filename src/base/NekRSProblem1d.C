@@ -524,6 +524,8 @@ NekRSProblem1d::sendBoundaryVelocityCorrectedToNek()
     nekrs::u_inlet(e, _nek_mesh->order(), _u_inlet_corrected);
   }
 
+  _console << _u_inlet_corrected << std::endl;
+
   _console << "done" << std::endl;
 
 }

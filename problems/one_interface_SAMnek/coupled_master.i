@@ -65,11 +65,11 @@
     execute_on = 'INITIAL NONLINEAR'
   [../]
 
-  [SAM_area_pp]
-    type = ComponentBoundaryArea
-    input = pipe1(out)
-    execute_on = 'INITIAL'
-  [../]
+#  [SAM_area_pp]
+#    type = ComponentBoundaryArea
+#    input = pipe1(out)
+#    execute_on = 'INITIAL'
+#  [../]
 
   [nekRS_pres_drop]
     type = Receiver

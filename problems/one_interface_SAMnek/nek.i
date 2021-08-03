@@ -33,6 +33,17 @@
     type = Receiver
   []
 
+  [x_velocity_avgvol]
+    type = NekVolumeAverage
+    field = x_velocity
+  []
+
+#  [rho_x_velocity_avgvol]
+#    type = ScalePostprocessor
+#    value = x_velocity_avgvol
+#    scaling_factor = 997.561
+#  []
+
   [nekRS_mflow_inlet] # check inlet nekRS mass flow rate = mass flwo rate from SAM
     type = NekSideMassFlowRate
     boundary = '1'
