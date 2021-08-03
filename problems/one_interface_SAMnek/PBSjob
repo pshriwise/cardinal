@@ -1,11 +1,11 @@
 #!/bin/bash
 #PBS -k o
-#PBS -l nodes=1:ppn=32,walltime=24:00:00
+#PBS -l nodes=1:ppn=80,walltime=24:00:00
 #PBS -M ahuxford@anl.gov
 #PBS -m abe
-#PBS -N turbPipe_flat
+#PBS -N oneint_samnek
 #PBS -j oe
-#PBS -q eddy32core
+#PBS -q eddy80core
 
 #rm -f logfile
 mv $1.log.$2 $1.log1.$2 2>/dev/null
@@ -25,8 +25,11 @@ module load moose-dev-gcc
 export CARDINAL_HOME=/home/cluster2/rhu/projects/NEAMS/aaron/cardinal
 export NEKRS_HOME=$CARDINAL_HOME/install
 
+which cmake
+which cmake3
 export PATH=/home/cluster1/ahuxford/nodebin:$PATH
+which cmake
+which cmake3
 
-
-mpirun -np 32 $CARDINAL_HOME/cardinal-opt --app sam -i coupled_master.i --nekrs-setup pipe  > logfile
+mpirun -np 80 $CARDINAL_HOME/cardinal-opt --app sam -i coupled_master.i --nekrs-setup pipe  > logfile
 

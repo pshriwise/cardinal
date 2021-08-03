@@ -14,3 +14,7 @@ export PETSC_DIR=/home/cluster2/rhu/projects/NEAMS/aaron/cardinal/contrib/moose/
 export CARDINAL_HOME=/home/cluster2/rhu/projects/NEAMS/aaron/cardinal
 
 export NEKRS_HOME=$CARDINAL_HOME/install
+PATH=${NEKRS_HOME}/bin:${PATH}
+
+export PATH=/home/cluster1/ahuxford/nodebin:$PATH
+
