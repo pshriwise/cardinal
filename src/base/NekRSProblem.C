@@ -41,7 +41,7 @@ validParams<NekRSProblem>()
 NekRSProblem::NekRSProblem(const InputParameters &params) : ExternalProblem(params),
     _serialized_solution(NumericVector<Number>::build(_communicator).release()),
     _moving_mesh(getParam<bool>("moving_mesh")),
-    _minimize_transfers_in(_moving_mesh ? true : getParam<bool>("minimize_transfers_in")),
+    _minimize_transfers_in(getParam<bool>("minimize_transfers_in")),
     _minimize_transfers_out(getParam<bool>("minimize_transfers_out")),
     _nondimensional(getParam<bool>("nondimensional")),
     _U_ref(getParam<Real>("U_ref")),
@@ -71,6 +71,10 @@ NekRSProblem::NekRSProblem(const InputParameters &params) : ExternalProblem(para
     if (!user_setting)
       mooseWarning("Overriding 'minimize_transfers_in' to 'true' for moving mesh problems!");
   }
+
+  // will be implemented soon
+  if (_moving_mesh && _nondimensional)
+    mooseError("Moving mesh features are not yet implemented for a non-dimensional nekRS case!");
 
   // if solving in nondimensional form, make sure that the user specified _all_ of the
   // necessary scaling quantities to prevent errors from forgetting one, which would take
