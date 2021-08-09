@@ -7,6 +7,7 @@
   dim = 2
   nx = 4
   ny = 4
+  parallel_type = replicated
 []
 
 [Variables]
@@ -30,7 +31,7 @@
 [MultiApps]
   [nek]
     type = TransientMultiApp
-    app_type = NekApp
+    app_type = CardinalApp
     input_files = 'nek.i'
     execute_on = timestep_end
     sub_cycling = true

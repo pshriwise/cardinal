@@ -4,11 +4,12 @@
 #include "TimeStepper.h"
 #include "NekInterface.h"
 #include "TimedPrint.h"
+#include "MooseUtils.h"
 
 #include "nekrs.hpp"
 #include "nekInterface/nekInterfaceAdapter.hpp"
 
-registerMooseObject("NekApp", NekRSProblem);
+registerMooseObject("CardinalApp", NekRSProblem);
 
 bool NekRSProblem::_first = true;
 
@@ -22,6 +23,9 @@ validParams<NekRSProblem>()
   params.addParam<bool>("minimize_transfers_out", false, "Whether to only synchronize nekRS "
     "for the direction FROM_EXTERNAL_APP on multiapp synchronization steps");
 
+  params.addParam<std::string>("casename", "Case name for the NekRS input files; "
+    "this is <case> in <case>.par, <case>.udf, <case>.oudf, and <case>.re2. "
+    "Can also be provided on the command line with --nekrs-setup, which will override this setting");
   params.addParam<bool>("nondimensional", false, "Whether nekRS is solved in non-dimensional form");
   params.addParam<bool>("moving_mesh", false, "Whether we have a moving mesh problem or not");
   params.addRangeCheckedParam<Real>("U_ref", 1.0, "U_ref > 0.0", "Reference velocity value for non-dimensional solution");
@@ -30,6 +34,10 @@ validParams<NekRSProblem>()
   params.addRangeCheckedParam<Real>("L_ref", 1.0, "L_ref > 0.0", "Reference length scale value for non-dimensional solution");
   params.addRangeCheckedParam<Real>("rho_0", 1.0, "rho_0 > 0.0", "Density parameter value for non-dimensional solution");
   params.addRangeCheckedParam<Real>("Cp_0", 1.0, "Cp_0 > 0.0", "Heat capacity parameter value for non-dimensional solution");
+
+  params.addParam<bool>("has_heat_source", true, "Whether a heat source will be applied to the NekRS domain. "
+    "We allow this to be turned off so that we don't need to add an OCCA source kernel if we know the "
+    "heat source in the NekRS domain is zero anyways (such as if NekRS only solves for the fluid and we have solid fuel).");
 
   params.addParam<PostprocessorName>("min_T", "If provided, postprocessor used to limit the minimum "
     "temperature (in dimensional form) in the nekRS problem");
@@ -44,6 +52,7 @@ NekRSProblem::NekRSProblem(const InputParameters &params) : ExternalProblem(para
     _minimize_transfers_in(getParam<bool>("minimize_transfers_in")),
     _minimize_transfers_out(getParam<bool>("minimize_transfers_out")),
     _nondimensional(getParam<bool>("nondimensional")),
+    _has_heat_source(getParam<bool>("has_heat_source")),
     _U_ref(getParam<Real>("U_ref")),
     _T_ref(getParam<Real>("T_ref")),
     _dT_ref(getParam<Real>("dT_ref")),
@@ -52,15 +61,14 @@ NekRSProblem::NekRSProblem(const InputParameters &params) : ExternalProblem(para
     _Cp_0(getParam<Real>("Cp_0")),
     _start_time(nekrs::startTime())
 {
-  // the NekRSProblem constructor is called right after building the mesh. In order
-  // to have pretty screen output without conflicting with the timed print messages,
-  // print diagnostic info related to the mesh here
   _nek_mesh = dynamic_cast<NekRSMesh*>(&mesh());
 
   if (!_nek_mesh)
-    mooseError("Mesh for a 'NekRSProblem' must be of type 'NekRSMesh'! In your [Mesh] "
-      "block, you should have 'type = NekRSMesh'");
+    mooseError("Mesh for a 'NekRSProblem' must be of type 'NekRSMesh'!");
 
+  // the NekRSProblem constructor is called right after building the mesh. In order
+  // to have pretty screen output without conflicting with the timed print messages,
+  // print diagnostic info related to the mesh here
   _nek_mesh->printMeshInfo();
 
   // if the mesh is moving, then we must minimize the incoming data transfers;
@@ -73,8 +81,14 @@ NekRSProblem::NekRSProblem(const InputParameters &params) : ExternalProblem(para
   }
 
   // will be implemented soon
-  if (_moving_mesh && _nondimensional)
-    mooseError("Moving mesh features are not yet implemented for a non-dimensional nekRS case!");
+  if (_moving_mesh)
+  {
+    if (_nondimensional)
+      mooseError("Moving mesh features are not yet implemented for a non-dimensional nekRS case!");
+
+    if (!_nek_mesh->getMesh().is_replicated())
+      mooseError("Distributed mesh features are not yet implemented for moving mesh cases!");
+  }
 
   // if solving in nondimensional form, make sure that the user specified _all_ of the
   // necessary scaling quantities to prevent errors from forgetting one, which would take
@@ -93,6 +107,11 @@ NekRSProblem::NekRSProblem(const InputParameters &params) : ExternalProblem(para
   // inform nekRS of the scaling that we are using if solving in non-dimensional form
   nekrs::solution::initializeDimensionalScales(_U_ref, _T_ref, _dT_ref, _L_ref, _rho_0, _Cp_0);
 
+  if (_nondimensional)
+    _console << "The NekRS model uses the following non-dimensional scales: " <<
+      "\n length: " << _L_ref << "\n velocity: " << _U_ref << "\n temperature: " << _T_ref <<
+      "\n temperature increment: " << _dT_ref << std::endl;
+
   // the way the data transfers are detected depend on nekRS being a sub-application,
   // so these settings are not invalid if nekRS is the master app (though you could
   // relax this in the future by reversing the synchronization step identification
@@ -105,7 +124,7 @@ NekRSProblem::NekRSProblem(const InputParameters &params) : ExternalProblem(para
 
   // It's too complicated to make sure that the dimensional form _also_ works when our
   // reference coordinates are different from what MOOSE is expecting, so just throw an error
-  if (_nondimensional && (std::abs(_nek_mesh->scaling() - _L_ref) > 1e-6))
+  if (_nondimensional && !MooseUtils::absoluteFuzzyEqual(_nek_mesh->scaling(), _L_ref))
     paramError("L_ref", "When solving in non-dimensional form, no capability exists to allow "
       "a nondimensional solution based on reference scales that are not in the same units as the "
       "coupled MOOSE application!\n\nIf solving nekRS in nondimensional form, you must choose "
@@ -187,6 +206,8 @@ NekRSProblem::NekRSProblem(const InputParameters &params) : ExternalProblem(para
 
 NekRSProblem::~NekRSProblem()
 {
+  nekrs::freeScratch();
+
   // write nekRS solution to output if not already written for this step
   if (!isOutputStep())
     nekrs::outfld(_timestepper->nondimensionalDT(_time));
@@ -210,7 +231,7 @@ NekRSProblem::initialSetup()
 
   // While we don't require nekRS to actually _solve_ for the temperature, we should
   // print a warning if there is no temperature solve. For instance, the check in
-  // NekApp makes sure that we have a [TEMPERATURE] block in the nekRS input file, but we
+  // Nek makes sure that we have a [TEMPERATURE] block in the nekRS input file, but we
   // might still toggle the solver off by setting 'solver = none'. Warn the user if
   // the solve is turned off because this is really only a testing feature.
   bool has_temperature_solve = nekrs::hasTemperatureSolve();
@@ -241,7 +262,7 @@ NekRSProblem::initialSetup()
   // condition check for boundary-based coupling). NOTE: This check is imperfect, because
   // even if there is a source kernel, we cannot tell _which_ passive scalar equation that
   // it is applied to (we have source kernels for the RANS passive scalar equations, for instance).
-  if (_nek_mesh->volume())
+  if (_nek_mesh->volume() && _has_heat_source)
     if (has_temperature_solve && !nekrs::hasHeatSourceKernel())
       mooseError("In order to send a heat source to nekRS, you must have an OCCA kernel "
         "for the source in the passive scalar equations!");
@@ -277,7 +298,7 @@ NekRSProblem::initialSetup()
 
   // Also make sure that the start time is consistent with what MOOSE wants to use.
   // If different from what nekRS internally wants to use, use the MOOSE value.
-  if (std::abs(moose_start_time - _start_time) > 1e-8)
+  if (!MooseUtils::absoluteFuzzyEqual(moose_start_time, _start_time))
   {
     mooseWarning("The start time set on 'NekRSProblem': " + Moose::stringify(moose_start_time) +
       " does not match the start time set in nekRS's .par file: " + Moose::stringify(_timestepper->dimensionalDT(_start_time)) + ". "
@@ -292,7 +313,7 @@ NekRSProblem::initialSetup()
 
   if (_boundary)
     _flux_integral = &getPostprocessorValueByName("flux_integral");
-  if (_volume)
+  if (_volume && _has_heat_source)
     _source_integral = &getPostprocessorValueByName("source_integral");
   if (_minimize_transfers_in)
     _transfer_in = &getPostprocessorValueByName("transfer_in");
@@ -324,7 +345,7 @@ NekRSProblem::isOutputStep() const
   {
     bool last_step = nekrs::lastStep(_timestepper->nondimensionalDT(_time), _t_step, 0.0 /* dummy elapsed time */);
 
-    // if NekApp is controlled by a master application, then the last time step
+    // if Nek is controlled by a master application, then the last time step
     // is controlled by that master application, in which case we don't want to
     // write at what nekRS thinks is the last step (since it may or may not be
     // the actual end step), especially because we already ensure that we write on the
@@ -340,9 +361,9 @@ NekRSProblem::isOutputStep() const
 
 void NekRSProblem::externalSolve()
 {
-  // The _dt member of NekRSProblem reflects the time step that MOOSE wants NekApp to
-  // take. For instance, if NekApp is controlled by a master app and subcycling is used,
-  // NekApp must advance to the time interval taken by the master app. If the time step
+  // The _dt member of NekRSProblem reflects the time step that MOOSE wants Nek to
+  // take. For instance, if Nek is controlled by a master app and subcycling is used,
+  // Nek must advance to the time interval taken by the master app. If the time step
   // that MOOSE wants nekRS to take (i.e. _dt) is smaller than we'd like nekRS to take, error.
   if (_dt < _timestepper->minDT())
     mooseError("Requested time step of " + std::to_string(_dt) + " is smaller than the minimum "
@@ -804,7 +825,7 @@ void NekRSProblem::syncSolutions(ExternalProblem::Direction direction)
       if (_boundary)
         sendBoundaryHeatFluxToNek();
 
-      if (_volume)
+      if (_volume && _has_heat_source)
         sendVolumeHeatSourceToNek();
 
       nekrs::copyScratchToDevice();
@@ -907,7 +928,7 @@ NekRSProblem::addExternalVariables()
     addPostprocessor("Receiver", "flux_integral", pp_params);
   }
 
-  if (_volume)
+  if (_volume && _has_heat_source)
   {
     addAuxVariable("MooseVariable", "heat_source", var_params);
     _heat_source_var = _aux->getFieldVariable<Real>(0, "heat_source").number();

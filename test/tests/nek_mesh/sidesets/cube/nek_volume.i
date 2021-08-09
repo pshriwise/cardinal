@@ -1,5 +1,6 @@
 [Problem]
-  kernel_coverage_check = false
+  type = NekRSProblem
+  casename = 'cube'
 []
 
 [Mesh]
@@ -9,19 +10,18 @@
   boundary = '1 2 3 4 5 6'
 []
 
-[Variables]
-  [dummy]
-  []
-[]
-
 [Executioner]
   type = Transient
-  num_steps = 1
+
+  [TimeStepper]
+    type = NekTimeStepper
+  []
 []
 
 [Outputs]
   exodus = true
   csv = true
+  hide = 'flux_integral source_integral'
 []
 
 [Postprocessors]

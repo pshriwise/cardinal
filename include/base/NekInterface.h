@@ -95,6 +95,19 @@ void initializeScratch();
 /// Free the scratch space for the flux transfer
 void freeScratch();
 
+/**
+ * Get the characteristic length (only valid for nondimensional formulations)
+ * @return characteristic length
+ */
+double characteristicLength();
+
+/**
+ * Get the viscosity used in the definition of the Reynolds number; note that
+ * for dimensional cases, this is only guaranteed to be correct if the viscosity is constant.
+ * @return constant dynamic viscosity
+ */
+double viscosity();
+
 /// Copy the flux from host to device
 void copyScratchToDevice();
 
@@ -368,12 +381,11 @@ struct volumeCoupling
   // process owning each element (for all elements)
   int * process;
 
+  // sideset IDs corresponding to the faces of each element (for all elements)
+  int * boundary;
+
   // number of elements owned by each process
   int * counts;
-
-  // offset into the boundary_coupling array where this element's face data begins
-  // (this value is not initialized if that element doesnt have any faces on a boundary)
-  int * boundary_offset;
 
   // number of faces on a boundary of interest for each element
   int * n_faces_on_boundary;
@@ -426,6 +438,20 @@ struct boundaryCoupling
    */
   int processor_id(const int elem_id) { return process[elem_id]; }
 };
+
+/**
+ * Sideset ID corresponding to a given volume element with give local face ID
+ * @param[in] elem_id element local rank ID
+ * @param[in] face_id element-local face ID
+ * @return sideset ID (-1 means not one a boundary)
+ */
+int boundary_id(const int elem_id, const int face_id);
+
+/**
+ * Number of faces per element; because NekRS only supports HEX20, this should be 6
+ * @return number of faces per mesh element
+ */
+int Nfaces();
 
 /**
  * Whether the specific boundary is a flux boundary
@@ -545,15 +571,6 @@ void volumeVertices(const int order, double* x, double* y, double* z);
  * @return number of faces on a couling boundary
  */
 int facesOnBoundary(const int elem_id);
-
-/**
- * Get the element-local face ID and sideset ID for a given global element
- * @param[in] elem_id global element ID
- * @param[in] face_id global face ID
- * @param[out] face local face ID
- * @param[out] side boundary ID for the face
- */
-void faceSideset(const int elem_id, const int face_id, int& face, int& side);
 
 /// Free dynamically allocated memory related to the surface mesh interpolation
 void freeMesh();

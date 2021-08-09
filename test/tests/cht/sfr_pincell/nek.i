@@ -1,5 +1,6 @@
 [Problem]
   type = NekRSProblem
+  casename = 'sfr_pin'
   minimize_transfers_in = true
   minimize_transfers_out = true
 []
@@ -11,7 +12,6 @@
 
 [Executioner]
   type = Transient
-  timestep_tolerance = 1e-10
 
   [TimeStepper]
     type = NekTimeStepper

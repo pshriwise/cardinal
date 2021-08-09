@@ -2,10 +2,12 @@
   type = NekRSMesh
   order = SECOND
   volume = true
+  parallel_type = replicated
 []
 
 [Problem]
   type = NekRSProblem
+  casename = 'nekbox'
   moving_mesh = true
   minimize_transfers_in = true
 []

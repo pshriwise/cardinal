@@ -8,7 +8,8 @@
 []
 
 [Problem]
-  type = NekProblem
+  type = NekRSProblem
+  casename = 'brick'
 []
 
 [Executioner]

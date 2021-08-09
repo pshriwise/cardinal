@@ -61,7 +61,7 @@ class OpenMCCellAverageProblem : public ExternalProblem
 {
 public:
   OpenMCCellAverageProblem(const InputParameters & params);
-  virtual ~OpenMCCellAverageProblem() override {}
+  virtual ~OpenMCCellAverageProblem() override;
 
   /**
    * Add 'heat_source', 'temp', and, if any fluid blocks are specified, a
@@ -165,6 +165,8 @@ public:
    * @return density conversion factor from kg/m3 to g/cm3
    */
   const Real & densityConversionFactor() const { return _density_conversion_factor; }
+
+  const std::vector<openmc::Tally *> & getLocalTally() const { return _local_tally; }
 
   /// Constant flag to indicate that a cell/element was unmapped
   static constexpr int32_t UNMAPPED {-1};

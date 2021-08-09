@@ -1,9 +1,6 @@
 [Problem]
-  # We dont need to use NekProblem here for this simple test, which only checks
-  # the construction of a mesh. Therefore, we are implicitly using FEProblem, which
-  # has some requirements for the existence of kernels and variables. Disable those
-  # with 'kernel_coverage_check = false' and adding a 'dummy' nonlinear variable.
-  kernel_coverage_check = false
+  type = NekRSProblem
+  casename = 'pyramid'
 []
 
 [Mesh]
@@ -12,6 +9,7 @@
   volume = true
 []
 
+# only here to avoid a re-gold
 [Variables]
   [dummy]
   []
@@ -19,11 +17,15 @@
 
 [Executioner]
   type = Transient
-  num_steps = 1
+
+  [TimeStepper]
+    type = NekTimeStepper
+  []
 []
 
 [Outputs]
   exodus = true
+  hide = 'source_integral temp heat_source'
 []
 
 # The points provided to these postprocessors are the centroids of the elements that

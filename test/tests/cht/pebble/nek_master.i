@@ -56,7 +56,7 @@
 [MultiApps]
   [nek]
     type = TransientMultiApp
-    app_type = NekApp
+    app_type = CardinalApp
     input_files = 'nek.i'
   []
 []
@@ -113,7 +113,7 @@
     boundary = '1'
   []
   [average_flux]
-    type = SideFluxAverage
+    type = SideDiffusiveFluxAverage
     diffusivity = thermal_conductivity
     variable = 'temp'
     boundary = '1'

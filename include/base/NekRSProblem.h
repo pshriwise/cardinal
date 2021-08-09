@@ -38,10 +38,10 @@ public:
   /**
    * \brief Write nekRS's solution at the last output step
    *
-   * If NekApp is not the master app, the number of time steps it takes is
+   * If Nek is not the master app, the number of time steps it takes is
    * controlled by the master app. Depending on the settings in the `.par` file,
    * it becomes possible that nekRS may not write an output file on the simulation's
-   * actual last time step, because NekApp may not know when that last time step is.
+   * actual last time step, because Nek may not know when that last time step is.
    * Therefore, here we can force nekRS to write its output.
    **/
   ~NekRSProblem();
@@ -67,7 +67,7 @@ public:
 
   /// Send volume mesh deformation flux to nekRS
   void sendVolumeDeformationToNek();
-  
+
   /// Send volume heat source to nekRS
   void sendVolumeHeatSourceToNek();
 
@@ -117,6 +117,18 @@ public:
    * \return minimum interpolated surface temperature
    */
   virtual double minInterpolatedTemperature() const;
+
+  /**
+   * Whether the mesh is moving
+   * @return whether the mesh is moving
+   */
+  virtual bool movingMesh() const { return _moving_mesh; }
+
+  /**
+   * Whether the solve is in nondimensional form
+   * @return whether solve is in nondimensional form
+   */
+  virtual bool nondimensional() const { return _nondimensional; }
 
 protected:
   std::unique_ptr<NumericVector<Number>> _serialized_solution;
@@ -172,6 +184,9 @@ protected:
 
   /// Whether the nekRS solution is performed in nondimensional scales
   const bool & _nondimensional;
+
+  /// Whether a heat source will be applied to NekRS from MOOSE
+  const bool & _has_heat_source;
 
   //@{
   /**

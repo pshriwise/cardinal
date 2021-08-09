@@ -1,11 +1,13 @@
 [Problem]
   type = NekRSProblem
   moving_mesh = true
+  casename = 'cube'
 []
 
 [Mesh]
   type = NekRSMesh
   volume = true
+  parallel_type = replicated
 []
 
 [Executioner]

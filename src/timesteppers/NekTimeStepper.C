@@ -4,20 +4,14 @@
 #include "NekInterface.h"
 #include "nekrs.hpp"
 
-registerMooseObject("NekApp", NekTimeStepper);
+registerMooseObject("CardinalApp", NekTimeStepper);
 
 template<>
 InputParameters validParams<NekTimeStepper>()
 {
   InputParameters params = validParams<TimeStepper>();
   params.addParam<Real>("min_dt", 1e-6, "Minimum time step size to allow MOOSE to set in nekRS");
-
-  // Set a higher default value for the timestep tolerance with which time steps are
-  // compared between nekRS and other MOOSE apps in a multiapp hierarchy. For some reason,
-  // it seems that floating point round-off accumulation is significant in nekRS, such
-  // that with subcycling, I frequently see that MOOSE wants nekRS to take a time step
-  // on the order of 5e-14 in order to "catch up" to a synchronization point.
-  params.set<Real>("timestep_tolerance", true) = 1e-6;
+  params.addClassDescription("Select time step size based on NekRS time stepping schemes");
   return params;
 }
 
@@ -25,11 +19,18 @@ NekTimeStepper::NekTimeStepper(const InputParameters & parameters) :
     TimeStepper(parameters),
     _min_dt(getParam<Real>("min_dt"))
 {
+  // Set a higher value for the timestep tolerance with which time steps are
+  // compared between nekRS and other MOOSE apps in a multiapp hierarchy. For some reason,
+  // it seems that floating point round-off accumulation is significant in nekRS, such
+  // that with subcycling, I frequently see that MOOSE wants nekRS to take a time step
+  // on the order of 5e-14 in order to "catch up" to a synchronization point.
+  _executioner.setTimestepTolerance(_min_dt);
+
   // nekRS can end a simulation based on (1) a number of time steps, (2) an
   // end time, or (3) a total elapsed wall time. Because this wall timer would
   // keep incrementing while other applications are running in this multiphysics
   // environment, we don't want to base when to finish nekRS on this. Even if
-  // NekApp is the ultimate master app, we still probably don't want to use a wall
+  // Nek is the ultimate master app, we still probably don't want to use a wall
   // time to determine when to end the simulation, because other objects in the
   // MOOSE input file would consume that wall time.
   if (nekrs::endControlElapsedTime())
@@ -46,7 +47,7 @@ NekTimeStepper::NekTimeStepper(const InputParameters & parameters) :
     // The MOOSE Transient executioner will end the simulation if _either_ the number
     // of time steps is greater than Transient::_num_steps or the time is greater than
     // or equal to Transient::_end_time. To avoid conflicts with NekTimeStepper, below
-    // we throw an error if the user tries to set num_steps or end_time from the NekApp
+    // we throw an error if the user tries to set num_steps or end_time from the Nek
     // input file. This guarantees that the MOOSE defaults of numeric_max are kept for
     // both end_time and num_steps, such that our nekRS setting will prevail.
     if (nekrs::endControlTime())
@@ -58,7 +59,7 @@ NekTimeStepper::NekTimeStepper(const InputParameters & parameters) :
   else
   {
     // To allow the controlling app to dictate when the nekRS solution ends, we
-    // just need to have the NekApp have a very large end_time (that presumably
+    // just need to have the Nek have a very large end_time (that presumably
     // the controlling app would not try to simulate beyond). We don't need to do
     // anything here, since the mooseError below ensures that we retain the MOOSE defaults
     // of numeric_max for both end_time and num_steps.

@@ -15,7 +15,7 @@
 #include "libmesh/cell_hex27.h"
 #include "nekrs.hpp"
 
-registerMooseObject("MooseApp", NekRSMesh);
+registerMooseObject("CardinalApp", NekRSMesh);
 
 template <>
 InputParameters
@@ -26,15 +26,13 @@ validParams<NekRSMesh>()
   params.addParam<bool>("volume", false, "Whether the nekRS volume will be coupled to MOOSE");
   params.addParam<MooseEnum>("order", getNekOrderEnum(), "Order of the mesh interpolation between nekRS and MOOSE");
   params.addRangeCheckedParam<Real>("scaling", 1.0, "scaling > 0.0", "Scaling factor to apply to the mesh");
-  params.addParam<bool>("fixed_meshes", false, "Whether the nekRS domain is fixed (no mesh movement "
-    "or adaptive mesh refinement) and some areas and volumes can be cached for postprocessors");
+  params.addClassDescription("Construct a mirror of the NekRS mesh in boundary and/or volume format");
   return params;
 }
 
 NekRSMesh::NekRSMesh(const InputParameters & parameters) :
   MooseMesh(parameters),
   _volume(getParam<bool>("volume")),
-  _fixed_meshes(getParam<bool>("fixed_meshes")),
   _boundary(isParamValid("boundary") ? &getParam<std::vector<int>>("boundary") : nullptr),
   _order(getParam<MooseEnum>("order").getEnum<order::NekOrderEnum>()),
   _scaling(getParam<Real>("scaling")),
@@ -386,18 +384,13 @@ NekRSMesh::addElems()
 
     // add sideset IDs to the mesh if we have volume coupling (this only adds the
     // sidesets associated with the coupling)
-    if (_volume && _boundary)
+    if (_volume)
     {
-      int n_faces_on_boundary = nekrs::mesh::facesOnBoundary(e);
-      for (int f = 0; f < n_faces_on_boundary; ++f)
+      for (int f = 0; f < nekrs::mesh::Nfaces(); ++f)
       {
-        // get the sideset ID and local face ID
-        int elem_local_face;
-        int boundary_id;
-        nekrs::mesh::faceSideset(e, f, elem_local_face, boundary_id);
-
-        // add this side to the appropriate boundary ID based on the elem-local face ID
-        boundary_info.add_side(elem, _side_index[elem_local_face], boundary_id);
+        int b_id = nekrs::mesh::boundary_id(e, f);
+        if (b_id != -1 /* NekRS's setting to indicate not on a sideset */)
+          boundary_info.add_side(elem, _side_index[f], b_id);
       }
     }
   }
