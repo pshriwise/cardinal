@@ -1,0 +1,41 @@
+[OCCA]
+backend = CPU
+deviceNumber = LOCAL-RANK
+
+[GENERAL]
+  polynomialOrder = 4
+  dt = 2e-03
+  writeInterval = 10000
+  numSteps = 10
+  timeStepper = tombo2
+  extrapolation = subCycling
+  subCyclingSteps = 2
+
+[PROBLEMTYPE]
+  equation = incompNS
+  stressFormulation = true # required for variable viscosity
+
+[PRESSURE]
+  residualTol = 1e-6
+
+[VELOCITY]
+  boundaryTypeMap = v, O, W 
+  residualTol = 1e-8
+  density   = 9.9756100e02
+  viscosity = 8.8871000e-04
+
+[TEMPERATURE]
+  solver = none
+  boundaryTypeMap = t, I, I  
+
+[SCALAR01] # k
+  boundaryTypeMap = t, I, t
+  residualTol = 1e-8
+  rho         = 9.9756100e02
+  diffusivity = 8.8871000e-04
+
+[SCALAR02] # tau
+  boundaryTypeMap = t, I, t
+  residualTol = 1e-8
+  rho         = 9.9756100e02
+  diffusivity = 8.8871000e-04
