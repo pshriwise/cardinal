@@ -70,6 +70,9 @@ public:
   /// Get volume temperature from nekRS
   void getVolumeTemperatureFromNek();
 
+  /// Send boundary velocity to nekRS while conserving mass flow rate
+  void sendBoundaryVelocityCorrectedToNek();
+
   /**
    * Adjust the NekRS solution by introducing max/min temperature clipping
    * to help with underresolved flow
@@ -162,6 +165,12 @@ protected:
 
   /// Whether a heat source will be applied to NekRS from MOOSE
   const bool & _has_heat_source;
+
+  /// Whether there's a SAM to nekRS coupling interface 
+  const bool & _SAMtoNek_interface;
+
+  /// SAM mass flow rate passed to nek
+  const PostprocessorValue * _SAM_mflow_inlet_interface = nullptr;
 
   /**
    * \brief Total surface-integrated flux coming from the coupled MOOSE app.

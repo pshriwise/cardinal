@@ -32,6 +32,9 @@ validParams<NekRSProblem>()
     "temperature (in dimensional form) in the nekRS problem");
   params.addParam<PostprocessorName>("max_T", "If provided, postprocessor used to limit the maximum "
     "temperature (in dimensional form) in the nekRS problem");
+
+  params.addParam<bool>("SAMtoNek_interface", false, "inlet interface from SAM to nekRS");
+
   return params;
 }
 
@@ -40,7 +43,9 @@ NekRSProblem::NekRSProblem(const InputParameters &params) : NekRSProblemBase(par
     _moving_mesh(getParam<bool>("moving_mesh")),
     _minimize_transfers_in(getParam<bool>("minimize_transfers_in")),
     _minimize_transfers_out(getParam<bool>("minimize_transfers_out")),
-    _has_heat_source(getParam<bool>("has_heat_source"))
+    _has_heat_source(getParam<bool>("has_heat_source")),
+
+    _SAMtoNek_interface(getParam<bool>("SAMtoNek_interface"))
 {
   // will be implemented soon
   if (_moving_mesh)
@@ -168,7 +173,13 @@ NekRSProblem::initialSetup()
       "must have 'solver = user' in the [MESH] block!");
 
   if (_boundary)
-    _flux_integral = &getPostprocessorValueByName("flux_integral");
+  {
+    if (_SAMtoNek_interface)
+    {
+    _SAM_mflow_inlet_interface = &getPostprocessorValueByName("SAM_mflow_inlet_interface");
+    }
+//    _flux_integral = &getPostprocessorValueByName("flux_integral");
+  }
   if (_volume && _has_heat_source)
     _source_integral = &getPostprocessorValueByName("source_integral");
   if (_minimize_transfers_in)
@@ -579,7 +590,8 @@ void NekRSProblem::syncSolutions(ExternalProblem::Direction direction)
       }
 
       if (_boundary)
-        sendBoundaryHeatFluxToNek();
+//        sendBoundaryHeatFluxToNek();
+        sendBoundaryVelocityCorrectedToNek();
 
       if (_volume && _has_heat_source)
         sendVolumeHeatSourceToNek();
@@ -702,4 +714,41 @@ NekRSProblem::addExternalVariables()
     auto pp_params = _factory.getValidParams("Receiver");
     addPostprocessor("Receiver", "transfer_in", pp_params);
   }
+}
+
+void
+NekRSProblem::sendBoundaryVelocityCorrectedToNek()
+{
+  _iconsole << "Sending corrected velocity to nekRS from first boundary specified in NekRSMesh, = ";
+
+  auto & solution = _aux->solution();
+  auto sys_number = _aux->number();
+
+  if (_first)
+  {
+    _serialized_solution->init(_aux->sys().n_dofs(), false, SERIAL);
+    _first = false;
+  }
+
+  solution.localize(*_serialized_solution);
+
+  auto & mesh = _nek_mesh->getMesh();
+
+  const double& _sam_mflow_inlet = *_SAM_mflow_inlet_interface;
+
+  const vector<int>& vecRef = *_boundary;
+
+  double rhoArea_inlet =  nekrs::rhoArea_Direct(vecRef[0]); //TODO, assumes first BC listed in nekRSMesh is inlet Boundary
+
+  const double _u_inlet_corrected = _sam_mflow_inlet / rhoArea_inlet ;
+
+  for (unsigned int e = 0; e < _n_surface_elems; e++)
+  {
+    nekrs::u_inlet(e, _nek_mesh->order(), _u_inlet_corrected);
+  }
+
+  _console << _u_inlet_corrected << std::endl;
+
+  _console << "done" << std::endl;
+
 }
