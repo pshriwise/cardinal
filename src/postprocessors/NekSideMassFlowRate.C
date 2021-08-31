@@ -9,7 +9,7 @@
 
 #include "NekSideMassFlowRate.h"
 
-registerMooseObject("NekApp", NekSideMassFlowRate);
+registerMooseObject("CardinalApp", NekSideMassFlowRate);
 
 defineLegacyParams(NekSideMassFlowRate);
 

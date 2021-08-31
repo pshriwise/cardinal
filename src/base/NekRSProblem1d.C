@@ -8,7 +8,7 @@
 #include "nekrs.hpp"
 #include "nekInterface/nekInterfaceAdapter.hpp"
 
-registerMooseObject("NekApp", NekRSProblem1d);
+registerMooseObject("CardinalApp", NekRSProblem1d);
 
 bool NekRSProblem1d::_first = true;
 
