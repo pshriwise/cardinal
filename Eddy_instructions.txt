@@ -4,6 +4,10 @@ Step 1 – Set environment:
 
 $source .set_env_cardinal
 
+or if building with an SAM outside of Cardinal:
+
+$source set_env_aaroncardinalOutsideSAM
+
 Step 2 – download cardinal from github:
 
 $ git clone https://github.com/neams-th-coe/cardinal.git
@@ -25,7 +29,7 @@ Include this right after line 104:
 
 Step 5 – Once the modification from Step 4 is done, built the PETSc numeric library:
 
-$ ./updade_and_rebuild_petsc.sh
+$ ./update_and_rebuild_petsc.sh
 
 Step 6 – Build the libMesh finite element library:
 
@@ -45,17 +49,7 @@ In line 5 change replace cmake to cmake3
 Step 8 – Finally, build the application from the top-level directory:
 
 $ cd ../
-$ make
+$ make -j4 2>&1 | tee make.log
 
-
-If you have errors with eddy using cmake instead of cmake3, use the following instructions to create a symbolic link and inform eddy nodes in PBSJOB script.
-
-Step 1 : create a bin file in your home directory 
-$ mkdir ~/bin
-
-Step 2:  create symbolic link of cmake3 into this bin directory, under the name cmake
-$ ln -s /bin/cmake3 ~/bin/cmake
-
-Step 3: in PBSJob script, add this new bin directory to the computing node's PATH, so that it knows to use this cmake3 symbolic link 
-export PATH="your home directory/bin:$PATH
- 
+For submitting jobs, follow the PBSjob script, which contains PBS instructions as well as loads modules, sets env variables, and the appropriate path to allow for cmake3 to work on Eddy's compute nodes.
+- the path's bin includes a symbolic link to cmake3, which is needed by nekRS
