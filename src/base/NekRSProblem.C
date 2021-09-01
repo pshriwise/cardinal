@@ -719,7 +719,7 @@ NekRSProblem::addExternalVariables()
 void
 NekRSProblem::sendBoundaryVelocityCorrectedToNek()
 {
-  _iconsole << "Sending corrected velocity to nekRS from first boundary specified in NekRSMesh, = ";
+  _console << "Sending corrected velocity to nekRS from first boundary specified in NekRSMesh, = ";
 
   auto & solution = _aux->solution();
   auto sys_number = _aux->number();
