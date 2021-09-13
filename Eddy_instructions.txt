@@ -56,9 +56,9 @@ For submitting jobs, follow the PBSjob script, which contains PBS instructions a
 
 
 Running a loop case with Cardinal (9/13/2021)
-- requires SAM to be the subApp and Cardinal be the MainApp
-- easiest way is to use an editted version of set_env_aaroncardinalNoSAM
-- run script, then make SAM alone (with it's version of MOOSE)
-- then make Cardinal (with only nekrs and openmc in the contrib directory, using SAM's MOOSE but no SAM_DIR set in your environment variables)
-- then in the sam MultiApp line of your Cardinal input file, add the library path to the SAM you made (example in loop test case)
+- requires SAM to be the subApp and Cardinal be the MainApp, in order to limit SAM to 1 processor. The easiest way to do this is to make Cardinal without SAM, then given the SAM MultiApp the location of the SAM lib.
+- First, edit "set_env_aaroncardinalNoSAM" custom to your directory/locations of SAM you'll make
+- Second, run the editted "set_env_aaroncardinalNoSAM" script, and make SAM alone (with its version of MOOSE)
+- Third, make Cardinal (with only nekrs and openmc in the contrib directory). "set_env_aaroncardinalNoSAM" sets Cardinal to use SAM's MOOSE, so it'll be compatible with SAM's lib.
+- Fourth, to run a coupled loop case, in the SAM MultiApp line of your Cardinal input file, add the library_path to the SAM you made in the second step. You can follow the example loop test case in "/home/cluster1/ahuxford/cardinal_NekSamInputFiles/problems/steady/pumpClosedLoop/OverDomain/case2_bdf1/coupled/nek/master.i"
 
