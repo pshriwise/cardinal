@@ -1,0 +1,21 @@
+#! /usr/bin/env bash
+
+module purge
+
+module load moose/.mpich-3.3_gcc-9.2.0
+module load miniconda moose-tools
+
+export CC=mpicc
+export CXX=mpicxx
+export FC=mpif90
+export F77=mpif77
+
+# Cardinal w/ no SAM and outside MOOSE
+export PETSC_ARCH=arch-moose
+export CARDINAL_HOME=/home/cluster2/rhu/projects/NEAMS/aaron/cardinal
+export NEKRS_HOME=$CARDINAL_HOME/install
+#export SAM_DIR=/home/cluster2/rhu/projects/NEAMS/aaron/SAM
+export MOOSE_DIR=/home/cluster2/rhu/projects/NEAMS/aaron/SAM/moose
+export PETSC_DIR=$MOOSE_DIR/petsc
+export LIBMESH_DIR=$MOOSE_DIR/libmesh/installed
+

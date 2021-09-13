@@ -53,3 +53,12 @@ $ make -j4 2>&1 | tee make.log
 
 For submitting jobs, follow the PBSjob script, which contains PBS instructions as well as loads modules, sets env variables, and the appropriate path to allow for cmake3 to work on Eddy's compute nodes.
 - the path's bin includes a symbolic link to cmake3, which is needed by nekRS
+
+
+Running a loop case with Cardinal (9/13/2021)
+- requires SAM to be the subApp and Cardinal be the MainApp
+- easiest way is to use an editted version of set_env_aaroncardinalNoSAM
+- run script, then make SAM alone (with it's version of MOOSE)
+- then make Cardinal (with only nekrs and openmc in the contrib directory, using SAM's MOOSE but no SAM_DIR set in your environment variables)
+- then in the sam MultiApp line of your Cardinal input file, add the library path to the SAM you made (example in loop test case)
+
