@@ -56,9 +56,10 @@ For submitting jobs, follow the PBSjob script, which contains PBS instructions a
 
 
 Running a loop case with Cardinal (9/13/2021)
-- requires SAM to be the subApp and Cardinal be the MainApp, in order to limit SAM to 1 processor. The easiest way to do this is to make Cardinal without SAM, then given the SAM MultiApp the location of the SAM lib.
+- Running a loop simulation requires SAM to be the subApp and Cardinal be the MainApp. This allows us to limit SAM to only use 1 processor, which is needed for closed loops in SAM. The easiest way to do this is to make Cardinal without SAM, then given the SAM MultiApp the location of the SAM lib.
 - First, edit "set_env_aaroncardinalNoSAM" custom to your directory/locations of SAM you'll make
 - Second, run the editted "set_env_aaroncardinalNoSAM" script, and make SAM alone (with its version of MOOSE)
-- Third, make Cardinal (with only nekrs and openmc in the contrib directory). "set_env_aaroncardinalNoSAM" sets MOOSE_DIR such that Cardinal to use SAM's MOOSE, so Cardinal will be able to run with SAM's lib.
-- Fourth, to run a coupled loop case, in the SAM MultiApp line of your Cardinal input file, add the library_path to the SAM you made in the second step. You can follow the example loop test case in "/home/cluster1/ahuxford/cardinal_NekSamInputFiles/problems/steady/pumpClosedLoop/OverDomain/case2_bdf1/coupled_nek_master.i"
+- Third, run "export LIBMESH_DIR=$MOOSE_DIR/libmesh/installed" to set the LIBMESH_DIR to SAM's installed version
+- Fourth, make Cardinal (with only nekrs and openmc in the contrib directory). "set_env_aaroncardinalNoSAM" sets MOOSE_DIR such that Cardinal to use SAM's MOOSE, so Cardinal will be able to run with SAM's lib.
+- Fifth, to run a coupled loop case, in the SAM MultiApp line of your Cardinal input file, add the library_path to the SAM you made in the second step. You can follow the example loop test case in "/home/cluster1/ahuxford/cardinal_NekSamInputFiles/problems/steady/pumpClosedLoop/OverDomain/case2_bdf1/coupled_nek_master.i"
 

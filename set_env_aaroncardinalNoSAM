@@ -14,8 +14,6 @@ export F77=mpif77
 export PETSC_ARCH=arch-moose
 export CARDINAL_HOME=/home/cluster2/rhu/projects/NEAMS/aaron/cardinal
 export NEKRS_HOME=$CARDINAL_HOME/install
-#export SAM_DIR=/home/cluster2/rhu/projects/NEAMS/aaron/SAM
 export MOOSE_DIR=/home/cluster2/rhu/projects/NEAMS/aaron/SAM/moose
 export PETSC_DIR=$MOOSE_DIR/petsc
-export LIBMESH_DIR=$MOOSE_DIR/libmesh/installed
 
