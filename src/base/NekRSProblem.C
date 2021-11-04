@@ -34,6 +34,7 @@ validParams<NekRSProblem>()
     "temperature (in dimensional form) in the nekRS problem");
 
   params.addParam<bool>("SAMtoNek_interface", false, "inlet interface from SAM to nekRS");
+  params.addParam<bool>("overlap_coupling", false, "overlap domain coupling of SAM and nekRS");
 
   return params;
 }
@@ -45,7 +46,8 @@ NekRSProblem::NekRSProblem(const InputParameters &params) : NekRSProblemBase(par
     _minimize_transfers_out(getParam<bool>("minimize_transfers_out")),
     _has_heat_source(getParam<bool>("has_heat_source")),
 
-    _SAMtoNek_interface(getParam<bool>("SAMtoNek_interface"))
+    _SAMtoNek_interface(getParam<bool>("SAMtoNek_interface")),
+    _overlap_coupling(getParam<bool>("overlap_coupling"))
 {
   // will be implemented soon
   if (_moving_mesh)
@@ -593,6 +595,17 @@ void NekRSProblem::syncSolutions(ExternalProblem::Direction direction)
 //        sendBoundaryHeatFluxToNek();
         sendBoundaryVelocityCorrectedToNek();
 
+
+// overlap coupling implementation
+// check if overlapping domain coupling
+// take Avg of U(x), write to postprocessor U_j-1 
+// write value to console
+      if (_overlap_coupling)
+        _console << "Overlap domain coupling, before Nek timestep" << std::endl;
+        
+//        setPostprocessorValueByName("nekRS_avgUvolOld", 0.0); 
+
+
       if (_volume && _has_heat_source)
         sendVolumeHeatSourceToNek();
 
@@ -608,6 +621,14 @@ void NekRSProblem::syncSolutions(ExternalProblem::Direction direction)
         _console << "Skipping " << _outgoing << " transfer out of nekRS, not at synchronization step" << std::endl;
         return;
       }
+
+// overlap coupling implementation
+// check if overlapping domain coupling
+// take Avg of U(x), write to postprocessor U_j 
+// write value to console
+      if (_overlap_coupling)
+        _console << "Overlap domain coupling, after Nek timestep" << std::endl;
+//        setPostprocessorValueByName("nekRS_avgUvolNew", 1.0); 
 
       if (!_volume)
         getBoundaryTemperatureFromNek();
@@ -683,6 +704,23 @@ NekRSProblem::addExternalVariables()
     // add the postprocessor that receives the flux integral for normalization
     auto pp_params = _factory.getValidParams("Receiver");
     addPostprocessor("Receiver", "flux_integral", pp_params);
+
+    if (_overlap_coupling)
+    {
+    // add postprocessors for avg U
+    auto pp_params = _factory.getValidParams("NekVolumeAverage");
+
+    pp_params.set<MooseEnum>("field")= "velocity_x"; // Hardcoded, avg Volume U(x)
+    pp_params.set<ExecFlagEnum>("execute_on", true) = EXEC_TIMESTEP_BEGIN;
+ 
+    addPostprocessor("NekVolumeAverage", "nekRS_avgUvolOld", pp_params);
+
+    pp_params.set<ExecFlagEnum>("execute_on", true) = EXEC_TIMESTEP_END;
+    addPostprocessor("NekVolumeAverage", "nekRS_avgUvolNew", pp_params);
+
+    _console << "added overlap coupling postprocessors";
+
+    }
   }
 
   if (_volume && _has_heat_source)

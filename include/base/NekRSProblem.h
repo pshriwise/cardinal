@@ -172,6 +172,8 @@ protected:
   /// SAM mass flow rate passed to nek
   const PostprocessorValue * _SAM_mflow_inlet_interface = nullptr;
 
+  /// Whether there's overlapping domain coupling of SAM and nekRS
+  const bool & _overlap_coupling;
   /**
    * \brief Total surface-integrated flux coming from the coupled MOOSE app.
    *
