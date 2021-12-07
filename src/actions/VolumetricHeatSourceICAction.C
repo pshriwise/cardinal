@@ -7,7 +7,7 @@ registerMooseAction("CardinalApp", VolumetricHeatSourceICAction, "add_heat_sourc
 InputParameters
 VolumetricHeatSourceICAction::validParams()
 {
-  InputParameters params = CardindalAction::validParams();
+  InputParameters params = CardinalAction::validParams();
   params.addRequiredParam<FunctionName>("function", "Function providing shape of the heat source");
   params.addParam<VariableName>("variable", "Name of the volumetric heat source variable");
   params.addRequiredParam<Real>("magnitude", "Magnitude of the heat source upon integration");

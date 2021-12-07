@@ -9,9 +9,6 @@ class InputParameters;
 template <typename T>
 InputParameters validParams();
 
-template <>
-InputParameters validParams<BulkEnergyConservationIC>();
-
 /**
  * Applies a temperature initial condition based on bulk energy conservation
  * in a fluid without any losses
