@@ -1,3 +1,21 @@
+/********************************************************************/
+/*                  SOFTWARE COPYRIGHT NOTIFICATION                 */
+/*                             Cardinal                             */
+/*                                                                  */
+/*                  (c) 2021 UChicago Argonne, LLC                  */
+/*                        ALL RIGHTS RESERVED                       */
+/*                                                                  */
+/*                 Prepared by UChicago Argonne, LLC                */
+/*               Under Contract No. DE-AC02-06CH11357               */
+/*                With the U. S. Department of Energy               */
+/*                                                                  */
+/*             Prepared by Battelle Energy Alliance, LLC            */
+/*               Under Contract No. DE-AC07-05ID14517               */
+/*                With the U. S. Department of Energy               */
+/*                                                                  */
+/*                 See LICENSE for full restrictions                */
+/********************************************************************/
+
 #include "BulkEnergyConservationICAction.h"
 #include "IntegralPreservingFunctionIC.h"
 #include "FEProblem.h"
@@ -9,7 +27,7 @@ InputParameters
 BulkEnergyConservationICAction::validParams()
 {
   InputParameters params = CardinalAction::validParams();
-  params.addParam<VariableName>("variable", "Name of the fluid temperature variable");
+  params.addRequiredParam<std::vector<VariableName>>("variable", "Name(s) of the fluid temperature variable(s)");
   params.addRequiredParam<unsigned int>("num_layers", "Number of layers to use for integrating the heat source");
 
   MooseEnum directions("x y z");
@@ -30,7 +48,7 @@ BulkEnergyConservationICAction::validParams()
 
 BulkEnergyConservationICAction::BulkEnergyConservationICAction(const InputParameters & parameters)
   : CardinalAction(parameters),
-    _variable(getParam<VariableName>("variable")),
+    _variable(getParam<std::vector<VariableName>>("variable")),
     _mdot(getParam<Real>("mass_flowrate")),
     _cp(getParam<Real>("cp")),
     _inlet_T(getParam<Real>("inlet_T")),
@@ -66,20 +84,24 @@ BulkEnergyConservationICAction::act()
 
   if (_current_task == "add_bulk_fluid_temperature_ic")
   {
-    const std::string ic_type = "BulkEnergyConservationIC";
-    InputParameters params = _factory.getValidParams(ic_type);
-    params.set<VariableName>("variable") = _variable;
-    params.set<UserObjectName>("layered_integral") = "cardinal_heat_source_layered_integral";
-    params.set<Real>("mass_flowrate") = _mdot;
-    params.set<Real>("cp") = _cp;
-    params.set<Real>("inlet_T") = _inlet_T;
-    params.set<PostprocessorName>("integral") = "cardinal_heat_source_integral";
-    params.set<Real>("magnitude") = ic->magnitude();
+    int i = 0;
+    for (const auto & v : _variable)
+    {
+      const std::string ic_type = "BulkEnergyConservationIC";
+      InputParameters params = _factory.getValidParams(ic_type);
+      params.set<VariableName>("variable") = v;
+      params.set<UserObjectName>("layered_integral") = "cardinal_heat_source_layered_integral";
+      params.set<Real>("mass_flowrate") = _mdot;
+      params.set<Real>("cp") = _cp;
+      params.set<Real>("inlet_T") = _inlet_T;
+      params.set<PostprocessorName>("integral") = "cardinal_heat_source_integral";
+      params.set<Real>("magnitude") = ic->magnitude();
 
-    setObjectBlocks(params, _blocks);
-    setObjectBoundaries(params, _boundary);
+      setObjectBlocks(params, _blocks);
+      setObjectBoundaries(params, _boundary);
 
-    _problem->addInitialCondition(ic_type, "cardinal_fluid_temp_ic", params);
+      _problem->addInitialCondition(ic_type, "cardinal_fluid_temp_ic_" + Moose::stringify(i), params);
+    }
   }
 
   if (_current_task == "add_bulk_fluid_temperature_user_object")

@@ -1,3 +1,21 @@
+/********************************************************************/
+/*                  SOFTWARE COPYRIGHT NOTIFICATION                 */
+/*                             Cardinal                             */
+/*                                                                  */
+/*                  (c) 2021 UChicago Argonne, LLC                  */
+/*                        ALL RIGHTS RESERVED                       */
+/*                                                                  */
+/*                 Prepared by UChicago Argonne, LLC                */
+/*               Under Contract No. DE-AC02-06CH11357               */
+/*                With the U. S. Department of Energy               */
+/*                                                                  */
+/*             Prepared by Battelle Energy Alliance, LLC            */
+/*               Under Contract No. DE-AC07-05ID14517               */
+/*                With the U. S. Department of Energy               */
+/*                                                                  */
+/*                 See LICENSE for full restrictions                */
+/********************************************************************/
+
 #include "VolumetricHeatSourceICAction.h"
 #include "FEProblem.h"
 
@@ -9,7 +27,7 @@ VolumetricHeatSourceICAction::validParams()
 {
   InputParameters params = CardinalAction::validParams();
   params.addRequiredParam<FunctionName>("function", "Function providing shape of the heat source");
-  params.addParam<VariableName>("variable", "Name of the volumetric heat source variable");
+  params.addRequiredParam<VariableName>("variable", "Name of the volumetric heat source variable");
   params.addRequiredParam<Real>("magnitude", "Magnitude of the heat source upon integration");
   return params;
 }

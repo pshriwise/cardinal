@@ -1,3 +1,21 @@
+/********************************************************************/
+/*                  SOFTWARE COPYRIGHT NOTIFICATION                 */
+/*                             Cardinal                             */
+/*                                                                  */
+/*                  (c) 2021 UChicago Argonne, LLC                  */
+/*                        ALL RIGHTS RESERVED                       */
+/*                                                                  */
+/*                 Prepared by UChicago Argonne, LLC                */
+/*               Under Contract No. DE-AC02-06CH11357               */
+/*                With the U. S. Department of Energy               */
+/*                                                                  */
+/*             Prepared by Battelle Energy Alliance, LLC            */
+/*               Under Contract No. DE-AC07-05ID14517               */
+/*                With the U. S. Department of Energy               */
+/*                                                                  */
+/*                 See LICENSE for full restrictions                */
+/********************************************************************/
+
 #pragma once
 
 #include "CardinalAction.h"
@@ -18,8 +36,8 @@ public:
   virtual void act();
 
 protected:
-  /// Variable to which the initial condition should be applied
-  const VariableName & _variable;
+  /// Variable(s) to which the initial condition should be applied
+  const std::vector<VariableName> & _variable;
 
   /// Fluid mass flowrate
   const Real & _mdot;
