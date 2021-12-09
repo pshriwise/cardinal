@@ -81,6 +81,7 @@ BulkEnergyConservationICAction::act()
 
   std::shared_ptr<InitialConditionBase> prereq = ic_warehouse.getObject("cardinal_heat_source_ic");
   std::shared_ptr<IntegralPreservingFunctionIC> ic = std::dynamic_pointer_cast<IntegralPreservingFunctionIC>(prereq);
+  const auto & heat_source_blocks = ic->blocks();
 
   if (_current_task == "add_bulk_fluid_temperature_ic")
   {
@@ -98,7 +99,6 @@ BulkEnergyConservationICAction::act()
       params.set<Real>("magnitude") = ic->magnitude();
 
       setObjectBlocks(params, _blocks);
-      setObjectBoundaries(params, _boundary);
 
       _problem->addInitialCondition(ic_type, "cardinal_fluid_temp_ic_" + Moose::stringify(i), params);
     }
@@ -120,8 +120,9 @@ BulkEnergyConservationICAction::act()
     if (_has_direction_max)
        params.set<Real>("direction_max") = *_direction_max;
 
-    setObjectBlocks(params, _blocks);
-    setObjectBoundaries(params, _boundary);
+    // we need to set the blocks of the heat source for integrating the heat source,
+    // not the blocks that the initial condition is applied for the fluid
+    setObjectBlocks(params, heat_source_blocks);
 
     params.set<ExecFlagEnum>("execute_on") = EXEC_INITIAL;
     _problem->addUserObject(uo_type, "cardinal_heat_source_layered_integral", params);

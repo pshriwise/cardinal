@@ -51,7 +51,6 @@ VolumetricHeatSourceICAction::act()
     params.set<ExecFlagEnum>("execute_on") = EXEC_INITIAL;
 
     setObjectBlocks(params, _blocks);
-    setObjectBoundaries(params, _boundary);
 
     params.set<std::vector<OutputName>>("outputs") = {"none"};
     _problem->addPostprocessor(pp_type, "cardinal_heat_source_integral", params);
@@ -67,7 +66,6 @@ VolumetricHeatSourceICAction::act()
     params.set<Real>("magnitude") = _magnitude;
 
     setObjectBlocks(params, _blocks);
-    setObjectBoundaries(params, _boundary);
 
     _problem->addInitialCondition(ic_type, "cardinal_heat_source_ic", params);
   }
