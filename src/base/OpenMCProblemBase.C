@@ -648,6 +648,37 @@ OpenMCProblemBase::cellInstanceFilter(const std::vector<cellInfo> & tally_cells)
   return cell_filter;
 }
 
+openmc::Tally* OpenMCProblemBase::addTally(const std::string& name, bool nuclides_object)
+{
+  auto tally = openmc::Tally::create();
+  tally->name_ = name;
+
+  if (nuclides_object)
+  {
+    InputParameters params = OpenMCTallyNuclides::validParams();
+    params.set<int32_t>("tally_id") = tally->id_;
+    params.set< std::vector<std::string>> >("names") = {"total"};
+    std::string uo_name = "tally_" + std::to_string(tally->id_) + "_nuclides";
+    std::shared_ptr<OpenMCTallyNuclides> nuclides_ptr = _problem->addUserObject("OpenMCTallyNuclides", uo_name, params);
+    _tally_nuclides_uos.push_back(dynamic_cast<OpenMCTallyNuclides *>(nuclides_ptr.get()));
+  }
+
+// VolumetricHeatSourceICAction::act()
+// {
+//   if (_current_task == "add_heat_source_postprocessor")
+//   {
+//     const std::string pp_type = "FunctionElementIntegral";
+//     InputParameters params = _factory.getValidParams(pp_type);
+//     params.set<FunctionName>("function") = _function;
+//     params.set<ExecFlagEnum>("execute_on") = EXEC_INITIAL;
+
+//     setObjectBlocks(params, _blocks);
+
+//     params.set<std::vector<OutputName>>("outputs") = {"none"};
+//     _problem->addPostprocessor(pp_type, "cardinal_heat_source_integral", params);
+//   }
+}
+
 openmc::Tally *
 OpenMCProblemBase::addTally(const std::vector<std::string> & score,
   std::vector<openmc::Filter *> & filters, const openmc::TallyEstimator & estimator)

@@ -754,6 +754,7 @@ OpenMCCellAverageProblem::initialSetup()
 
   setupProblem();
 
+
 #ifdef ENABLE_DAGMC
   if (isParamValid("skinner"))
   {
