@@ -184,6 +184,14 @@ OpenMCProblemBase::OpenMCProblemBase(const InputParameters & params)
     openmc::settings::statepoint_batch.erase(xml_n_batches);
   }
 
+  // create a tally generator UO (for use whith MOOSE server)
+  InputParameters tally_generator_params = OpenMCTallyGenerator::validParams();
+  addUserObject("OpenMCTallyGenerator", "tally_generator", tally_generator_params);
+
+  // Tally ID postprocessor
+  InputParameters tally_id_params = OpenMCTallyID::validParams();
+  addPostprocessor("OpenMCTallyID", "last_tally_id", tally_id_params);
+
   // The OpenMC wrapping doesn't require material properties itself, but we might
   // define them on some blocks of the domain for other auxiliary kernel purposes
   setMaterialCoverageCheck(false);
@@ -653,15 +661,17 @@ openmc::Tally* OpenMCProblemBase::addTally(const std::string& name, bool nuclide
   auto tally = openmc::Tally::create();
   tally->name_ = name;
 
-  if (nuclides_object)
-  {
-    InputParameters params = OpenMCTallyNuclides::validParams();
-    params.set<int32_t>("tally_id") = tally->id_;
-    params.set< std::vector<std::string>> >("names") = {"total"};
-    std::string uo_name = "tally_" + std::to_string(tally->id_) + "_nuclides";
-    std::shared_ptr<OpenMCTallyNuclides> nuclides_ptr = _problem->addUserObject("OpenMCTallyNuclides", uo_name, params);
-    _tally_nuclides_uos.push_back(dynamic_cast<OpenMCTallyNuclides *>(nuclides_ptr.get()));
-  }
+  // if (nuclides_object)
+  // {
+  //   InputParameters params = OpenMCTallyNuclides::validParams();
+  //   params.set<int32_t>("tally_id") = tally->id_;
+  //   params.set< std::vector<std::string>> >("names") = {"total"};
+  //   std::string uo_name = "tally_" + std::to_string(tally->id_) + "_nuclides";
+  //   std::shared_ptr<OpenMCTallyNuclides> nuclides_ptr = _fe_problem->addUserObject("OpenMCTallyNuclides", uo_name, params);
+  //   _tally_nuclides_uos.push_back(dynamic_cast<OpenMCTallyNuclides *>(nuclides_ptr.get()));
+  // }
+
+  return tally;
 
 // VolumetricHeatSourceICAction::act()
 // {
