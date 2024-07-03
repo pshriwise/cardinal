@@ -360,13 +360,6 @@ protected:
   void sendTallyNuclidesToOpenMC();
 
   /**
-   * Create a new tally in the OpenMC problem
-   * @param[in] name name of the tally
-   * @param[in] nuclides_object whether or not to create a nuclides UserObject for the tally
-  */
-  openmc::Tally * addTally(const std::string& name, bool nuclides_object=false);
-
-  /**
    * Add tally
    * @param[in] score score type
    * @param[in] filters tally filters
