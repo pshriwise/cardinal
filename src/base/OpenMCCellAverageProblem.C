@@ -2524,6 +2524,7 @@ OpenMCCellAverageProblem::initializeTallies()
       for (int score = 0; score < _tally_score.size(); ++score)
         t->triggers_.push_back({triggerMetric((*_tally_trigger)[score]),
                                 _tally_trigger_threshold[score],
+                                false,
                                 score});
 }
 
