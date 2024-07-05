@@ -18,7 +18,6 @@
   type = OpenMCCellAverageProblem
   tally_type = cell
   tally_blocks = '0'
-
   cell_level = 0
   power = 100.0
 
@@ -27,9 +26,12 @@
 
 [UserObjects]
   [tally1]
-    type = OpenMCTallyNuclides
+    type = OpenMCTallyEditor
     tally_id = 2
-    names = 'U238'
+    nuclides = 'U238'
+    filter_ids = ''
+    multiply_density = true
+    scores = ''
   []
 []
 
