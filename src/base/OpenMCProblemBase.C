@@ -770,7 +770,8 @@ OpenMCProblemBase::getOpenMCUserObjects()
   }
 }
 
-void OpenMCProblemBase::executeFilterEditors()
+void
+OpenMCProblemBase::executeFilterEditors()
 {
   executeControls(EXEC_FILTER_GENERATORS);
   _console << "Executing filter editors...";
