@@ -39,6 +39,12 @@
   []
 []
 
+
+[Debug]
+  show_actions = true
+[]
+
+
 [Executioner]
   type = Transient
   num_steps = 3

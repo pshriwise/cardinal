@@ -42,11 +42,23 @@ class CardinalOperator(CoupledOperator):
                 f'{uo_path}/densities="{" ".join([str(d) for d in mat.densities.flat])}"']
 
     @staticmethod
+    def filter_userobject_args(id, domain_type, domain_ids):
+        filter_path = f'UserObjects/openmc_filter{id}'
+        return [f'{filter_path}/type=OpenMCDomainFilterEditor',
+                f'{filter_path}/create_filter = true',
+                f'{filter_path}/filter_id="{id}"',
+                f'{filter_path}/filter_type="{domain_type}"',
+                f'{filter_path}/bins="{" ".join([str(d) for d in domain_ids])}"']
+
+    @staticmethod
     def tally_userobject_args(id):
         tally_path = f'UserObjects/openmc_tally{id}'
-        return [f'{tally_path}/type=OpenMCTallyNuclides',
+        return [f'{tally_path}/type=OpenMCTallyEditor',
+                f'{tally_path}/create_tally = true',
                 f'{tally_path}/tally_id={id}',
-                f'{tally_path}/names=""']
+                f'{tally_path}/scores=""',
+                f'{tally_path}/nuclides=""',
+                f'{tally_path}/filter_ids=""',]
 
     def start_cardinal(self):
         """Builds and starts the MooseControl object that runs cardinal
@@ -66,6 +78,15 @@ class CardinalOperator(CoupledOperator):
         # add tally user objects
         for tally in openmc.lib.tallies.values():
             cardinal_cmd += self.tally_userobject_args(tally.id)
+
+        for filter in openmc.lib.filters.values():
+            if isinstance(filter, (openmc.lib.CellFilter, openmc.lib.MaterialFilter, openmc.lib.UniverseFilter)):
+                bins = [bin.id for bin in filter.bins]
+            elif isinstance(filter, openmc.lib.MeshFilter):
+                bins = [filter.mesh.id]
+            else:
+                continue
+            cardinal_cmd += self.filter_userobject_args(filter.id, filter.filter_type, bins)
 
         self._control = MooseControl(moose_command=cardinal_cmd,
                                               moose_control_name=control_name)
@@ -173,8 +194,15 @@ class CardinalOperator(CoupledOperator):
             logger.info(f'Updating tally {t.id} via {uo_path}')
 
             nuclides = [n for n in t.nuclides]
-            names_path = f'{uo_path}/names'
+            names_path = f'{uo_path}/nuclides'
             self._control.setControllableVectorString(names_path, nuclides)
+
+            scores = [s for s in t.scores]
+            self._control.setControllableVectorString(f'{uo_path}/scores', scores)
+
+            filter_ids = [f.id for f in t.filters]
+            self._control.setControllableVectorString(f'{uo_path}/filter_ids', filter_ids)
+
             break
 
     def load_cardinal_results(self, sp_file):
@@ -205,7 +233,7 @@ class CardinalOperator(CoupledOperator):
         n = super().initial_condition()
         self._update_materials_and_nuclides(n)
 
-        openmc.lib.tallies.export_to_xml()
+        # openmc.lib.tallies.export_to_xml()
         # Ensure that tally data is written to the statepoint file
         for t in openmc.lib.tally.tallies.values():
             t.writable = True
