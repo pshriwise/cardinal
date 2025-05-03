@@ -372,7 +372,12 @@ OpenMCProblemBase::externalSolve()
   // update tallies as needed before starting the OpenMC run
   executeEditors();
 
-  int err = openmc_run();
+  int err = 0;
+  if (openmc::settings::solver_type == openmc::SolverType::RANDOM_RAY) {
+    openmc_run_random_ray();
+  } else {
+   err = openmc_run();
+  }
   if (err)
     mooseError(openmc_err_msg);
 

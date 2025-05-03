@@ -28,6 +28,7 @@
 #include "openmc/bank.h"
 #include "openmc/capi.h"
 #include "openmc/cell.h"
+#include "openmc/constants.h"
 #include "openmc/geometry.h"
 #include "openmc/geometry_aux.h"
 #include "openmc/hdf5_interface.h"
